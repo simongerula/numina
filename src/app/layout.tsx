@@ -9,8 +9,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Numina — local money tracker",
-  description: "A private, local-first money tracker. No cloud, no login, no telemetry.",
+  title: "Numina | Local money tracker",
+  description:
+    "A private, local-first money tracker. No cloud, no login, no telemetry.",
 };
 
 export default function RootLayout({
@@ -19,7 +20,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} h-full`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${inter.variable} h-full`}
+      suppressHydrationWarning
+    >
       <body className="min-h-full antialiased">{children}</body>
     </html>
   );

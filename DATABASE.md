@@ -1,4 +1,4 @@
-# Numina — Database Design
+# Numina - Database Design
 
 Local SQLite database (file `data/numina.db`, gitignored).
 
@@ -20,7 +20,7 @@ accounts ────< movements
 
 ---
 
-## Schema (applied at first run — `src/lib/db/index.ts`)
+## Schema (applied at first run - `src/lib/db/index.ts`)
 
 ```sql
 CREATE TABLE IF NOT EXISTS accounts (
@@ -70,7 +70,7 @@ views to keep in sync.
 
 ## Safety properties
 
-- Every statement is **prepared** with bound parameters — no interpolated SQL.
+- Every statement is **prepared** with bound parameters - no interpolated SQL.
 - Foreign keys are enforced (deleting an account cascades its movements; in the
   UI accounts are archived, never hard-deleted).
 - The only writers are the `/api/*` route handlers behind the localhost guard
