@@ -2,6 +2,7 @@ import { BalanceChart } from "@/components/dashboard/balance-chart";
 import { BalancesTable } from "@/components/dashboard/balances-table";
 import { Ledger } from "@/components/dashboard/ledger";
 import { listAccounts, listMovements } from "@/lib/db/queries";
+import numinaIcon from "./icon.png";
 
 export const dynamic = "force-dynamic";
 
@@ -11,12 +12,21 @@ export default function DashboardPage() {
 
   return (
     <main className="mx-auto min-h-dvh max-w-6xl space-y-6 px-4 py-8">
-      <header className="flex items-baseline justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Numina</h1>
-          <p className="text-sm text-muted-foreground">
-            A private, local-first money tracker. No cloud, no login, no telemetry.
-          </p>
+      <header className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <img
+            src={numinaIcon.src}
+            alt=""
+            width={40}
+            height={40}
+            className="size-10 rounded-xl shadow-sm"
+          />
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Numina</h1>
+            <p className="text-sm text-muted-foreground">
+              A private, local-first money tracker. No cloud, no login, no telemetry.
+            </p>
+          </div>
         </div>
       </header>
 

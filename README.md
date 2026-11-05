@@ -19,11 +19,13 @@ just a single SQLite file that lives on your computer.
 
 ```bash
 pnpm install
-pnpm dev
+pnpm numina
 ```
 
-Open **http://127.0.0.1:3000** — that's it. The database is created automatically
-at `data/numina.db` on first run.
+That starts the dev server (bound to loopback only) and opens
+**http://127.0.0.1:3000** in your browser once it's ready. Alternatively, run
+`pnpm dev` and open the URL yourself — that's it. The database is created
+automatically at `data/numina.db` on first run.
 
 ## How it works
 
@@ -67,6 +69,7 @@ Numina is designed for a local, single-user context and hardens accordingly:
 | Command | Purpose |
 |---------|---------|
 | `pnpm dev` | Run locally on http://127.0.0.1:3000 |
+| `pnpm numina` | Same as `pnpm dev`, plus opens a browser tab once the server responds |
 | `pnpm build` | Production build |
 | `pnpm start` | Serve the production build (loopback only) |
 | `pnpm lint` | ESLint |
