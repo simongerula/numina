@@ -9,22 +9,30 @@ const MONTH_NAMES = [
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
-/** End-of-month balance per account (in dollars) plus a "Total" series. */
+export type ChartRange = "6m" | "1y" | "all";
+
+/**
+ * End-of-month balance per account (in dollars) plus a "Total" series.
+ * Ranges: 6m / 1y are rolling windows ending this month; "all" spans every
+ * month that has movement data (padded to the current month).
+ */
 export function buildMonthlySeries(
   accounts: Account[],
   movements: Movement[],
-  showAll: boolean
+  range: ChartRange
 ): BalancePoint[] {
   const now = new Date();
 
   let keys: Array<{ year: number; monthIndex: number }>;
-  if (showAll) {
+  if (range === "all") {
+    // Months that have activity, plus the current month so the series ends "now".
     const seen = new Set(
       movements.map((m) => {
         const [y, mo] = m.date.split("-").map(Number);
         return `${y}-${mo}`;
       })
     );
+    seen.add(`${now.getFullYear()}-${now.getMonth() + 1}`);
     keys = Array.from(seen)
       .map((k) => {
         const [y, mo] = k.split("-").map(Number);
@@ -32,16 +40,24 @@ export function buildMonthlySeries(
       })
       .sort((a, b) => a.year - b.year || a.monthIndex - b.monthIndex);
   } else {
+    const monthsBack = range === "6m" ? 6 : 12;
     keys = [];
-    for (let i = 5; i >= 0; i--) {
+    for (let i = monthsBack - 1; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       keys.push({ year: d.getFullYear(), monthIndex: d.getMonth() });
     }
   }
 
+  // Greater spans need year qualifiers so repeated month names stay unambiguous.
+  const withYear = range === "all" || range === "1y";
+
   return keys.map(({ year, monthIndex }) => {
     const endOfMonth = new Date(year, monthIndex + 1, 0, 23, 59, 59).getTime();
-    const point: BalancePoint = { month: MONTH_NAMES[monthIndex], year, monthIndex };
+    const point: BalancePoint = {
+      month: withYear ? `${MONTH_NAMES[monthIndex]} '${String(year).slice(2)}` : MONTH_NAMES[monthIndex],
+      year,
+      monthIndex,
+    };
 
     let total = 0;
     for (const account of accounts) {
