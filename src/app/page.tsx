@@ -20,8 +20,12 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <BalanceChart accounts={accounts} movements={movements} />
-      <BalancesTable accounts={accounts} movements={movements} />
+      <div className="grid items-stretch gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <BalanceChart accounts={accounts} movements={movements} />
+        </div>
+        <BalancesTable accounts={accounts} movements={movements} />
+      </div>
       <Ledger accounts={accounts} movements={movements} />
     </main>
   );

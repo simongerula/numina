@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -76,7 +75,6 @@ export function BalancesTable({ accounts, movements }: { accounts: Account[]; mo
             <DialogContent className="sm:max-w-sm">
               <DialogHeader>
                 <DialogTitle>New account</DialogTitle>
-                <DialogDescription>Create a trackable account (bank, wallet, cash…).</DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
@@ -85,7 +83,7 @@ export function BalancesTable({ accounts, movements }: { accounts: Account[]; mo
                     id="account-name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="ASB, Kernel, Ethereum…"
+                    placeholder="e.g. Bank, Wallet, Cash…"
                     maxLength={60}
                     autoFocus
                     required
