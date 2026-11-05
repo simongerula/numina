@@ -222,31 +222,31 @@ export function Ledger({ accounts, movements }: { accounts: Account[]; movements
         </div>
       </header>
 
-      <div className="overflow-x-auto">
+      <div className="max-h-[465px] overflow-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-muted-foreground">
-              <th className="px-5 py-2 font-medium">Period</th>
-              <th className="px-2 py-2 font-medium">Date</th>
-              <th className="px-2 py-2 font-medium">Account</th>
-              <th className="px-2 py-2 font-medium">Type</th>
-              <th className="px-2 py-2 text-right font-medium">Amount</th>
-              <th className="px-2 py-2 font-medium">Note</th>
-              <th className="w-10 px-2" aria-label="Delete" />
+              <th className="sticky top-0 z-10 bg-card px-5 py-2 font-medium">Period</th>
+              <th className="sticky top-0 z-10 bg-card px-2 py-2 font-medium">Date</th>
+              <th className="sticky top-0 z-10 bg-card px-2 py-2 font-medium">Account</th>
+              <th className="sticky top-0 z-10 bg-card px-2 py-2 font-medium">Type</th>
+              <th className="sticky top-0 z-10 bg-card px-2 py-2 text-right font-medium">Amount</th>
+              <th className="sticky top-0 z-10 bg-card px-2 py-2 font-medium">Note</th>
+              <th className="sticky top-0 z-10 w-10 bg-card px-2" aria-label="Delete" />
             </tr>
           </thead>
           <tbody>
             {/* New entry row */}
-            <tr className="border-b border-l-[3px] border-l-primary/70 bg-muted/40">
-              <td className="px-5 py-2 text-muted-foreground tabular-nums">
+            <tr className="border-b border-l-[3px] border-l-primary/70 bg-muted">
+              <td className="sticky top-[36px] z-[5] whitespace-nowrap bg-muted px-5 py-2 text-muted-foreground tabular-nums">
                 <span className="inline-flex items-center gap-2">
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                  <span className="inline-flex h-5 items-center rounded-full bg-primary/10 px-2 text-[10px] font-semibold uppercase leading-none tracking-wide text-primary">
                     New
                   </span>
                   {formatPeriod(newDraft.date.slice(0, 7))}
                 </span>
               </td>
-              <LedgerCell editing>
+              <LedgerCell editing className="sticky top-[36px] z-[5] bg-muted">
                 <input
                   type="date"
                   value={newDraft.date}
@@ -255,7 +255,7 @@ export function Ledger({ accounts, movements }: { accounts: Account[]; movements
                   aria-label="New date"
                 />
               </LedgerCell>
-              <LedgerCell editing>
+              <LedgerCell editing className="sticky top-[36px] z-[5] bg-muted">
                 <LedgerSelect
                   className="w-28"
                   value={newDraft.account_id}
@@ -268,7 +268,7 @@ export function Ledger({ accounts, movements }: { accounts: Account[]; movements
                   ))}
                 </LedgerSelect>
               </LedgerCell>
-              <LedgerCell editing>
+              <LedgerCell editing className="sticky top-[36px] z-[5] bg-muted">
                 <LedgerSelect
                   className="w-24 capitalize"
                   value={newDraft.type}
@@ -288,7 +288,7 @@ export function Ledger({ accounts, movements }: { accounts: Account[]; movements
                   ))}
                 </LedgerSelect>
               </LedgerCell>
-              <LedgerCell editing align="right">
+              <LedgerCell editing align="right" className="sticky top-[36px] z-[5] bg-muted">
                 <input
                   inputMode="decimal"
                   placeholder="0.00"
@@ -301,7 +301,7 @@ export function Ledger({ accounts, movements }: { accounts: Account[]; movements
                   aria-label="New amount"
                 />
               </LedgerCell>
-              <LedgerCell editing>
+              <LedgerCell editing className="sticky top-[36px] z-[5] bg-muted">
                 <input
                   placeholder="Note…"
                   value={newDraft.note}
@@ -315,12 +315,12 @@ export function Ledger({ accounts, movements }: { accounts: Account[]; movements
                   aria-label="New note"
                 />
               </LedgerCell>
-              <td className="px-2 py-1.5">
+              <td className="sticky top-[36px] z-[5] bg-muted px-2 py-1.5">
                 <button
                   onClick={addRow}
                   disabled={busy || !newDraft.amount || !newDraft.account_id}
                   className={cn(
-                    "rounded-md p-1.5 transition disabled:opacity-40",
+                    "rounded-md p-1 transition disabled:opacity-40",
                     newDraft.amount && newDraft.account_id
                       ? "bg-primary/10 text-primary hover:bg-primary/20"
                       : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -518,14 +518,16 @@ function LedgerCell({
   children,
   editing,
   align = "left",
+  className,
 }: {
   children: React.ReactNode;
   editing?: boolean;
   align?: "left" | "right";
+  className?: string;
 }) {
   return (
     <td
-      className={cn("px-2 py-1.5", editing && "focus-within:bg-background/60 focus-within:ring-1 focus-within:ring-ring/40")}
+      className={cn("px-2 py-1.5", editing && "focus-within:bg-background/60 focus-within:ring-1 focus-within:ring-ring/40", className)}
       style={{ textAlign: align === "right" ? "right" : "left" }}
     >
       {children}
