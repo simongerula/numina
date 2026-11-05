@@ -42,9 +42,22 @@ function centsFromInput(raw: string): number | null {
 }
 
 /** Excel-like inline-editable ledger: Period | Date | Account | Type | Amount | Note */
-export function Ledger({ accounts, movements }: { accounts: Account[]; movements: Movement[] }) {
+export function Ledger({
+  accounts,
+  hiddenAccounts = [],
+  movements,
+}: {
+  accounts: Account[];
+  hiddenAccounts?: Account[];
+  movements: Movement[];
+}) {
   const router = useRouter();
   const { hidden } = useBalancesHidden();
+
+  // Hidden accounts keep their movements: they remain selectable for filters
+  // and for editing old entries, but never for new ones.
+  const filterAccounts = useMemo(() => [...accounts, ...hiddenAccounts], [accounts, hiddenAccounts]);
+  const label = (a: Account) => (hiddenAccounts.some((h) => h.id === a.id) ? `${a.name} (hidden)` : a.name);
 
   const periods = useMemo(() => {
     const set = new Set(movements.map((m) => m.date.slice(0, 7)));
@@ -184,7 +197,7 @@ export function Ledger({ accounts, movements }: { accounts: Account[]; movements
       "aria-label": field,
     }) as const;
 
-  if (accounts.length === 0) {
+  if (accounts.length === 0 && hiddenAccounts.length === 0) {
     return (
       <section className="rounded-xl border bg-card p-5 text-sm text-muted-foreground shadow-sm">
         Create an account first — then your ledger will appear here.
@@ -215,8 +228,8 @@ export function Ledger({ accounts, movements }: { accounts: Account[]; movements
             onChange={(e) => setFilterAccount(e.target.value)}
           >
             <option value="all">All accounts</option>
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>{a.name}</option>
+            {filterAccounts.map((a) => (
+              <option key={a.id} value={a.id}>{label(a)}</option>
             ))}
           </LedgerSelect>
         </div>
@@ -346,8 +359,8 @@ export function Ledger({ accounts, movements }: { accounts: Account[]; movements
                       </LedgerCell>
                       <LedgerCell editing>
                         <LedgerSelect className="w-28" {...editingCell("account_id")}>
-                          {accounts.map((a) => (
-                            <option key={a.id} value={a.id}>{a.name}</option>
+                          {filterAccounts.map((a) => (
+                            <option key={a.id} value={a.id}>{label(a)}</option>
                           ))}
                         </LedgerSelect>
                       </LedgerCell>

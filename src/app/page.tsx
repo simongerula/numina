@@ -1,13 +1,14 @@
 import { BalanceChart } from "@/components/dashboard/balance-chart";
 import { BalancesTable } from "@/components/dashboard/balances-table";
 import { Ledger } from "@/components/dashboard/ledger";
-import { listAccounts, listMovements } from "@/lib/db/queries";
+import { listAccounts, listArchivedAccounts, listMovements } from "@/lib/db/queries";
 import numinaIcon from "./icon.png";
 
 export const dynamic = "force-dynamic";
 
 export default function DashboardPage() {
   const accounts = listAccounts();
+  const hiddenAccounts = listArchivedAccounts();
   const movements = listMovements();
 
   return (
@@ -34,9 +35,9 @@ export default function DashboardPage() {
         <div className="lg:col-span-2">
           <BalanceChart accounts={accounts} movements={movements} />
         </div>
-        <BalancesTable accounts={accounts} movements={movements} />
+        <BalancesTable accounts={accounts} hiddenAccounts={hiddenAccounts} movements={movements} />
       </div>
-      <Ledger accounts={accounts} movements={movements} />
+      <Ledger accounts={accounts} hiddenAccounts={hiddenAccounts} movements={movements} />
     </main>
   );
 }

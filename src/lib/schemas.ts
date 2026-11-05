@@ -28,6 +28,8 @@ export const accountUpdateSchema = z.object({
   name: z.string().trim().min(1).max(60).optional(),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   sort_order: z.number().int().min(0).max(9999).optional(),
+  /** Soft-hide: archived accounts vanish from the dashboard but keep their movements. */
+  archived: z.boolean().optional(),
 });
 
 export const movementCreateSchema = z

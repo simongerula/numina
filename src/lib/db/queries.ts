@@ -1,5 +1,5 @@
 import { getDb } from "@/lib/db";
-import type { Account, Movement } from "@/lib/types";
+import type { Account, AccountRow, Movement } from "@/lib/types";
 import type { AccountCreate, AccountUpdate, MovementCreate, MovementUpdate } from "@/lib/schemas";
 import { InputError } from "@/lib/server/guard";
 
@@ -13,17 +13,26 @@ import { InputError } from "@/lib/server/guard";
 // ---------------------------------------------------------------------------
 
 export function listAccounts(): Account[] {
+  return accountRows(0);
+}
+
+/** Hidden (archived) accounts, same shape as `listAccounts`. Movements are kept. */
+export function listArchivedAccounts(): Account[] {
+  return accountRows(1);
+}
+
+function accountRows(archived: 0 | 1): Account[] {
   const rows = getDb()
     .prepare(
       `SELECT a.id, a.name, a.color, a.sort_order,
               COALESCE(SUM(m.amount_cents), 0) AS balance
        FROM accounts a
        LEFT JOIN movements m ON m.account_id = a.id
-       WHERE a.archived = 0
+       WHERE a.archived = ?
        GROUP BY a.id
        ORDER BY a.sort_order, a.name`
     )
-    .all() as Array<{ id: string; name: string; color: string; sort_order: number; balance: number }>;
+    .all(archived) as Array<{ id: string; name: string; color: string; sort_order: number; balance: number }>;
 
   return rows.map((r) => ({ ...r, balance: r.balance ?? 0 }));
 }
@@ -45,15 +54,17 @@ export function createAccount(data: AccountCreate): string {
 
 export function updateAccount(id: string, data: AccountUpdate): void {
   const db = getDb();
-  const current = db.prepare(`SELECT * FROM accounts WHERE id = ? AND archived = 0`).get(id);
+  // No archived filter here: hidden accounts can still be restored or renamed.
+  const current = db.prepare(`SELECT * FROM accounts WHERE id = ?`).get(id) as AccountRow | undefined;
   if (!current) throw new InputError("Account not found");
 
   db.prepare(
-    `UPDATE accounts SET name = ?, color = ?, sort_order = ? WHERE id = ?`
+    `UPDATE accounts SET name = ?, color = ?, sort_order = ?, archived = ? WHERE id = ?`
   ).run(
-    data.name?.trim() ?? (current as { name: string }).name,
-    data.color ?? (current as { color: string }).color,
-    data.sort_order ?? (current as { sort_order: number }).sort_order,
+    data.name?.trim() ?? current.name,
+    data.color ?? current.color,
+    data.sort_order ?? current.sort_order,
+    data.archived === undefined ? current.archived : data.archived ? 1 : 0,
     id
   );
 }

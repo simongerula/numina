@@ -72,6 +72,8 @@ views to keep in sync.
 
 - Every statement is **prepared** with bound parameters - no interpolated SQL.
 - Foreign keys are enforced (deleting an account cascades its movements; in the
-  UI accounts are archived, never hard-deleted).
+  UI accounts are **hidden**, never hard-deleted — `DELETE` and
+  `PATCH { archived: true }` archive, `PATCH { archived: false }` restores, and
+  movements always stay intact).
 - The only writers are the `/api/*` route handlers behind the localhost guard
   and Zod validation.
