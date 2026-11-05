@@ -42,3 +42,7 @@ next-env.d.ts
 
 # local database — never commit financial data
 /data/
+
+# Agents files
+PLAN.md
+AGENTS.md

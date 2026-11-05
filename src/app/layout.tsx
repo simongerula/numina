@@ -10,7 +10,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "Numina — local money tracker",
-  description: "A private, local-first expense tracker. Your data never leaves this machine.",
+  description: "A private, local-first money tracker. No cloud, no login, no telemetry.",
 };
 
 export default function RootLayout({

@@ -15,7 +15,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Numina</h1>
           <p className="text-sm text-muted-foreground">
-            Your private, local money tracker — nothing leaves this machine.
+            A private, local-first money tracker. No cloud, no login, no telemetry.
           </p>
         </div>
       </header>
