@@ -108,7 +108,7 @@ export function createMovement(data: MovementCreate): string {
   let signed: number;
   if (data.type === "deposit") signed = data.amount;
   else if (data.type === "withdraw") signed = -data.amount;
-  else signed = Math.sign(data.amount) * data.amount; // signed as given
+  else signed = data.amount; // adjustment: nonzero enforced by schema, signed as given
 
   const id = crypto.randomUUID();
   db.prepare(
@@ -133,7 +133,7 @@ export function updateMovement(id: string, data: MovementUpdate): void {
   if (data.amount !== undefined) {
     if (type === "deposit") amountCents = data.amount;
     else if (type === "withdraw") amountCents = -data.amount;
-    else amountCents = Math.sign(data.amount) * data.amount;
+    else amountCents = data.amount; // adjustment: signed as given
   } else {
     amountCents = row.amount_cents;
   }

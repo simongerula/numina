@@ -3,8 +3,8 @@
 import { Eye, EyeOff, Wallet } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { formatSignedMoney, formatMoney, formatPeriod } from "@/lib/format";
-import { monthlyDelta, currentPeriod } from "@/lib/series";
+import { formatSignedMoney, formatMoney } from "@/lib/format";
+import { totalProfit } from "@/lib/series";
 import type { Account, Movement } from "@/lib/types";
 import { useBalancesHidden } from "@/hooks/useBalancesHidden";
 import { Button } from "@/components/ui/button";
@@ -32,9 +32,8 @@ export function BalancesTable({ accounts, movements }: { accounts: Account[]; mo
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
 
-  const period = currentPeriod();
   const totalBalance = accounts.reduce((s, a) => s + a.balance, 0);
-  const totalDelta = accounts.reduce((s, a) => s + monthlyDelta(movements, a.id, period), 0);
+  const totalDelta = accounts.reduce((s, a) => s + totalProfit(movements, a.id), 0);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -125,14 +124,12 @@ export function BalancesTable({ accounts, movements }: { accounts: Account[]; mo
               <tr className="text-left text-muted-foreground">
                 <th className="px-5 py-2 font-medium">Account</th>
                 <th className="px-3 py-2 text-right font-medium">Balance</th>
-                <th className="px-5 py-2 text-right font-medium">Profit ({formatPeriod(period)})</th>
+                <th className="px-5 py-2 text-right font-medium">Profit</th>
               </tr>
             </thead>
             <tbody>
               {accounts.map((account) => {
-                const delta = monthlyDelta(movements, account.id, period);
-                const base = account.balance - delta;
-                const pct = base !== 0 ? (delta / Math.abs(base)) * 100 : null;
+                const delta = totalProfit(movements, account.id);
                 return (
                   <tr key={account.id} className="border-t">
                     <td className="px-5 py-3">
@@ -152,12 +149,6 @@ export function BalancesTable({ accounts, movements }: { accounts: Account[]; mo
                       )}
                     >
                       {formatSignedMoney(delta, hidden)}
-                      {pct !== null && !hidden && (
-                        <span className={cn("ml-1 opacity-75", pct < 0 && "text-red-600")}>
-                          ({pct >= 0 ? "+" : ""}
-                          {pct.toFixed(2)}%)
-                        </span>
-                      )}
                     </td>
                   </tr>
                 );

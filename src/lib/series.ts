@@ -74,10 +74,10 @@ export function buildMonthlySeries(
   });
 }
 
-/** Signed cents an account changed during a "YYYY-MM" period. */
-export function monthlyDelta(movements: Movement[], accountId: string, period: string): number {
+/** Signed cents an account gained via adjustments over its entire tracked history. */
+export function totalProfit(movements: Movement[], accountId: string): number {
   return movements.reduce(
-    (sum, m) => (m.account_id === accountId && m.date.startsWith(period) ? sum + m.amount_cents : sum),
+    (sum, m) => (m.account_id === accountId && m.type === "adjustment" ? sum + m.amount_cents : sum),
     0
   );
 }

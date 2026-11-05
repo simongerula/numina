@@ -2,12 +2,22 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2 } from "lucide-react";
+import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import type { Account, Movement } from "@/lib/types";
 import { formatDate, formatPeriod, formatMoney } from "@/lib/format";
 import { currentPeriod } from "@/lib/series";
 import { useBalancesHidden } from "@/hooks/useBalancesHidden";
 import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface Draft {
   date: string;
@@ -57,6 +67,14 @@ export function Ledger({ accounts, movements }: { accounts: Account[]; movements
     amount: "",
     note: "",
   });
+
+  // "Set new balance" helper for adjustments in the new row
+  const [adjustOpen, setAdjustOpen] = useState(false);
+  const [newTotal, setNewTotal] = useState("");
+
+  const selectedAccount = accounts.find((a) => a.id === newDraft.account_id);
+  const newTotalCents = centsFromInput(newTotal);
+  const computedAdjustment = selectedAccount && newTotalCents !== null ? newTotalCents - selectedAccount.balance : null;
 
   const visible = movements.filter(
     (m) =>
@@ -133,6 +151,19 @@ export function Ledger({ accounts, movements }: { accounts: Account[]; movements
     }
   };
 
+  const confirmAdjust = () => {
+    if (!selectedAccount || newTotalCents === null) return;
+    const diff = newTotalCents - selectedAccount.balance;
+    if (diff === 0) {
+      setNewTotal("");
+      setAdjustOpen(false);
+      return;
+    }
+    setNewDraft((d) => ({ ...d, type: "adjustment", amount: (diff / 100).toString() }));
+    setNewTotal("");
+    setAdjustOpen(false);
+  };
+
   const remove = async (id: string) => {
     if (busy) return;
     setBusy(true);
@@ -163,31 +194,31 @@ export function Ledger({ accounts, movements }: { accounts: Account[]; movements
 
   return (
     <section className="rounded-xl border bg-card text-card-foreground shadow-sm">
-      <header className="flex flex-col gap-3 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <header className="flex flex-col gap-3 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:pr-8">
         <h2 className="text-sm font-semibold uppercase tracking-wide">Ledger</h2>
-        <div className="flex gap-2">
-          <select
+        <div className="flex gap-2 sm:gap-3">
+          <LedgerSelect
+            variant="filter"
             aria-label="Filter by period"
             value={filterPeriod}
             onChange={(e) => setFilterPeriod(e.target.value)}
-            className="h-9 rounded-md border border-input bg-background px-2 text-sm"
           >
             <option value="all">All periods</option>
             {periods.map((p) => (
               <option key={p} value={p}>{formatPeriod(p)}</option>
             ))}
-          </select>
-          <select
+          </LedgerSelect>
+          <LedgerSelect
+            variant="filter"
             aria-label="Filter by account"
             value={filterAccount}
             onChange={(e) => setFilterAccount(e.target.value)}
-            className="h-9 rounded-md border border-input bg-background px-2 text-sm"
           >
             <option value="all">All accounts</option>
             {accounts.map((a) => (
               <option key={a.id} value={a.id}>{a.name}</option>
             ))}
-          </select>
+          </LedgerSelect>
         </div>
       </header>
 
@@ -206,8 +237,15 @@ export function Ledger({ accounts, movements }: { accounts: Account[]; movements
           </thead>
           <tbody>
             {/* New entry row */}
-            <tr className="border-b bg-muted/30">
-              <td className="px-5 py-2 text-muted-foreground tabular-nums">{formatPeriod(newDraft.date.slice(0, 7))}</td>
+            <tr className="border-b border-l-[3px] border-l-primary/70 bg-muted/40">
+              <td className="px-5 py-2 text-muted-foreground tabular-nums">
+                <span className="inline-flex items-center gap-2">
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                    New
+                  </span>
+                  {formatPeriod(newDraft.date.slice(0, 7))}
+                </span>
+              </td>
               <LedgerCell editing>
                 <input
                   type="date"
@@ -218,29 +256,37 @@ export function Ledger({ accounts, movements }: { accounts: Account[]; movements
                 />
               </LedgerCell>
               <LedgerCell editing>
-                <select
+                <LedgerSelect
+                  className="w-28"
                   value={newDraft.account_id}
                   onChange={(e) => setNewDraft((d) => ({ ...d, account_id: e.target.value }))}
-                  className="w-28 bg-transparent text-sm outline-none"
                   aria-label="New account"
                 >
                   <option value="">Select…</option>
                   {accounts.map((a) => (
                     <option key={a.id} value={a.id}>{a.name}</option>
                   ))}
-                </select>
+                </LedgerSelect>
               </LedgerCell>
               <LedgerCell editing>
-                <select
+                <LedgerSelect
+                  className="w-24 capitalize"
                   value={newDraft.type}
-                  onChange={(e) => setNewDraft((d) => ({ ...d, type: e.target.value as Draft["type"] }))}
-                  className="w-24 capitalize bg-transparent text-sm outline-none"
+                  disabled={!newDraft.account_id}
+                  onChange={(e) => {
+                    const type = e.target.value as Draft["type"];
+                    if (type === "adjustment" && newDraft.account_id) {
+                      setAdjustOpen(true);
+                      setNewTotal("");
+                    }
+                    setNewDraft((d) => ({ ...d, type }));
+                  }}
                   aria-label="New type"
                 >
                   {TYPES.map((t) => (
                     <option key={t} value={t} className="capitalize">{t}</option>
                   ))}
-                </select>
+                </LedgerSelect>
               </LedgerCell>
               <LedgerCell editing align="right">
                 <input
@@ -273,7 +319,12 @@ export function Ledger({ accounts, movements }: { accounts: Account[]; movements
                 <button
                   onClick={addRow}
                   disabled={busy || !newDraft.amount || !newDraft.account_id}
-                  className="rounded-md p-1.5 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground disabled:opacity-40"
+                  className={cn(
+                    "rounded-md p-1.5 transition disabled:opacity-40",
+                    newDraft.amount && newDraft.account_id
+                      ? "bg-primary/10 text-primary hover:bg-primary/20"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  )}
                   aria-label="Add movement"
                 >
                   <Plus className="h-4 w-4" />
@@ -294,18 +345,18 @@ export function Ledger({ accounts, movements }: { accounts: Account[]; movements
                         <input type="date" className="w-32 bg-transparent text-sm outline-none" {...editingCell("date")} />
                       </LedgerCell>
                       <LedgerCell editing>
-                        <select className="w-28 bg-transparent text-sm outline-none" {...editingCell("account_id")}>
+                        <LedgerSelect className="w-28" {...editingCell("account_id")}>
                           {accounts.map((a) => (
                             <option key={a.id} value={a.id}>{a.name}</option>
                           ))}
-                        </select>
+                        </LedgerSelect>
                       </LedgerCell>
                       <LedgerCell editing>
-                        <select className="w-24 capitalize bg-transparent text-sm outline-none" {...editingCell("type")}>
+                        <LedgerSelect className="w-24 capitalize" {...editingCell("type")}>
                           {TYPES.map((t) => (
                             <option key={t} value={t} className="capitalize">{t}</option>
                           ))}
-                        </select>
+                        </LedgerSelect>
                       </LedgerCell>
                       <LedgerCell editing align="right">
                         <AmountInput {...editingCell("amount")} autoFocus />
@@ -368,7 +419,98 @@ export function Ledger({ accounts, movements }: { accounts: Account[]; movements
           </tbody>
         </table>
       </div>
+
+      <Dialog open={adjustOpen} onOpenChange={setAdjustOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Set new balance</DialogTitle>
+            <DialogDescription>
+              Enter the new total for {selectedAccount?.name ?? "the account"} and the adjustment will be calculated for
+              you. Cancel to type a manual adjustment in the table instead.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              confirmAdjust();
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="adjust-new-total">New balance</Label>
+              <Input
+                id="adjust-new-total"
+                inputMode="decimal"
+                placeholder="0.00"
+                value={newTotal}
+                onChange={(e) => setNewTotal(e.target.value)}
+                autoFocus
+              />
+              <p className="text-xs text-muted-foreground">
+                Current balance: {formatMoney(selectedAccount?.balance ?? 0, hidden)}
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setNewTotal("");
+                  setAdjustOpen(false);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={computedAdjustment === null || computedAdjustment === 0}>
+                Confirm
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </section>
+  );
+}
+
+/**
+ * Select with a custom chevron. Native select arrows are pinned to the
+ * element's edge, which visually crowds the card border; drawing our own
+ * lets us control the spacing.
+ */
+function LedgerSelect({
+  variant = "cell",
+  className,
+  children,
+  ...props
+}: React.ComponentProps<"select"> & { variant?: "filter" | "cell" }) {
+  const isFilter = variant === "filter";
+  return (
+    <div
+      className={cn(
+        "relative inline-flex",
+        isFilter && "h-9 rounded-md border border-input bg-background",
+        className
+      )}
+    >
+      <select
+        {...props}
+        className={cn(
+          "h-full w-full appearance-none bg-transparent text-sm outline-none",
+          isFilter ? "pl-3 pr-10" : "pl-0 pr-7",
+          "disabled:cursor-not-allowed disabled:opacity-40",
+          className
+        )}
+      >
+        {children}
+      </select>
+      <ChevronDown
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground",
+          isFilter ? "right-3" : "right-1"
+        )}
+      />
+    </div>
   );
 }
 
