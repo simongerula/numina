@@ -31,8 +31,10 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div className="grid items-stretch gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      {/* Definite row height on desktop so the chart card and accounts card match;
+          the accounts list inside scrolls when it overflows. */}
+      <div className="grid items-stretch gap-6 lg:grid-cols-3 lg:grid-rows-[400px]">
+        <div className="lg:col-span-2 lg:flex">
           <BalanceChart accounts={accounts} movements={movements} />
         </div>
         <BalancesTable accounts={accounts} hiddenAccounts={hiddenAccounts} movements={movements} />

@@ -30,7 +30,7 @@ export function BalanceChart({ accounts, movements }: { accounts: Account[]; mov
   const tickFormatter = (v: number) => (hidden ? "•••" : `$${(v / 1000).toFixed(0)}k`);
 
   return (
-    <section className="rounded-xl border bg-card text-card-foreground shadow-sm">
+    <section className="flex flex-col rounded-xl border bg-card text-card-foreground shadow-sm lg:h-full lg:flex-1">
       <header className="flex flex-col gap-3 px-5 pt-5 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-sm font-semibold uppercase tracking-wide">
           Account performance over time
@@ -52,7 +52,7 @@ export function BalanceChart({ accounts, movements }: { accounts: Account[]; mov
           ))}
         </div>
       </header>
-      <div className="h-[280px] px-5 pb-5 pt-3 sm:h-[320px]">
+      <div className="h-[280px] min-h-0 px-5 pb-5 pt-3 sm:h-[320px] lg:h-auto lg:min-h-0 lg:flex-1">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={monthlyData}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
