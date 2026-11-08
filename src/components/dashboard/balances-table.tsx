@@ -1,7 +1,7 @@
 "use client";
 
 import { ArchiveRestore, Eye, EyeOff, Trash2, Wallet } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatSignedMoney, formatMoney } from "@/lib/format";
 import { totalProfit } from "@/lib/series";
@@ -23,6 +23,32 @@ import { cn } from "@/lib/utils";
 const PALETTE = [
   "#4f46e5", "#10b981", "#f59e0b", "#8b5cf6", "#f97316", "#ec4899", "#06b6d4", "#84cc16",
 ];
+
+/**
+ * Truncated account name with a full-name tooltip, but only when the text
+ * is actually clipped (scrollWidth > clientWidth), re-checked on resize.
+ */
+function AccountName({ name }: { name: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [truncated, setTruncated] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const check = () => setTruncated(el.scrollWidth > el.clientWidth);
+    check();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(check);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [name]);
+
+  return (
+    <span ref={ref} className="truncate" title={truncated ? name : undefined}>
+      {name}
+    </span>
+  );
+}
 
 /** Balances + profits per account, with inline add/edit/hide (never hard-delete). */
 export function BalancesTable({
@@ -129,7 +155,7 @@ export function BalancesTable({
                     <li key={account.id} className="flex items-center justify-between gap-3 py-2">
                       <span className="flex min-w-0 items-center gap-2">
                         <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: account.color }} />
-                        <span className="truncate">{account.name}</span>
+                        <AccountName name={account.name} />
                         <span className="shrink-0 tabular-nums text-muted-foreground">
                           {formatMoney(account.balance, hidden)}
                         </span>
@@ -231,7 +257,7 @@ export function BalancesTable({
                     <td className="px-5 py-3">
                       <span className="flex min-w-0 items-center gap-2">
                         <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: account.color }} />
-                        <span className="truncate">{account.name}</span>
+                        <AccountName name={account.name} />
                       </span>
                     </td>
                     <td className="px-3 py-3 text-right font-medium tabular-nums">
