@@ -31,10 +31,27 @@ Numbers you can check:
 
 ## How to use
 
+**One-time setup** — clone the repo, then from inside the project run:
+
 ```bash
-pnpm install
-pnpm numina     # starts the app and opens the browser tab for you
+pnpm numina install
 ```
+
+That single command installs dependencies, builds the production bundle, and
+symlinks the launcher into pnpm's global bin dir. From then on, from **any**
+directory:
+
+```bash
+numina     # start Numina and open the browser tab
+```
+
+(If the just-installed command isn't found yet, open a new terminal window —
+that's where the pnpm global bin dir gets sourced.)
+
+The launcher always runs *this* project: its `data/` ledger and its loopback
+binding travel with it no matter where you invoke it from. It serves the
+production build when one exists; `numina dev` runs hot-reload dev mode
+instead.
 
 Then the daily rhythm:
 
@@ -78,7 +95,12 @@ Design decisions that matter here:
 
 | Command | Purpose |
 |---------|---------|
-| `pnpm numina` | Start dev server + open the browser tab |
+| `numina install` (or `pnpm numina install`) | One-time setup: deps + production build + global `numina` command |
+| `numina` (or `pnpm numina`) | Start the app (prod build if present, dev otherwise) + open the browser tab |
+| `numina open` | Just open the browser tab (start it first) |
+| `numina stop` | Stop the running instance |
+| `numina build` | Run the production build (`next build`) |
+| `numina dev` | Force dev mode (same as `pnpm dev`) |
 | `pnpm dev` | Start dev server only, on http://127.0.0.1:3000 |
 | `pnpm build` | Production build |
 | `pnpm start` | Serve the production build (loopback only) |

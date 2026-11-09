@@ -1,6 +1,7 @@
 import { BalanceChart } from "@/components/dashboard/balance-chart";
 import { BalancesTable } from "@/components/dashboard/balances-table";
 import { Ledger } from "@/components/dashboard/ledger";
+import { MonthlyChangeRow } from "@/components/dashboard/monthly-change-row";
 import { listAccounts, listArchivedAccounts, listMovements } from "@/lib/db/queries";
 import numinaIcon from "./icon.png";
 
@@ -39,6 +40,7 @@ export default function DashboardPage() {
         </div>
         <BalancesTable accounts={accounts} hiddenAccounts={hiddenAccounts} movements={movements} />
       </div>
+      <MonthlyChangeRow accounts={accounts} movements={movements} />
       <Ledger accounts={accounts} hiddenAccounts={hiddenAccounts} movements={movements} />
     </main>
   );

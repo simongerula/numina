@@ -74,6 +74,40 @@ export function buildMonthlySeries(
   });
 }
 
+/**
+ * Net change in total balance (signed cents, active accounts only) for each of
+ * the last `months` calendar months, oldest first, ending with the current
+ * month. Since balance = sum of movements, each month's change is simply the
+ * sum of that month's movement amounts.
+ */
+export function monthlyBalanceChanges(
+  accounts: Account[],
+  movements: Movement[],
+  months = 6
+): Array<{ period: string; label: string; cents: number }> {
+  const activeIds = new Set(accounts.map((a) => a.id));
+  const now = new Date();
+
+  const buckets = new Map<string, number>();
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    buckets.set(key, 0);
+  }
+
+  for (const m of movements) {
+    if (!activeIds.has(m.account_id)) continue;
+    const key = m.date.slice(0, 7);
+    if (buckets.has(key)) buckets.set(key, (buckets.get(key) ?? 0) + m.amount_cents);
+  }
+
+  return Array.from(buckets.entries()).map(([period, cents]) => ({
+    period,
+    label: MONTH_NAMES[Number(period.slice(5, 7)) - 1],
+    cents,
+  }));
+}
+
 /** Signed cents an account gained via adjustments over its entire tracked history. */
 export function totalProfit(movements: Movement[], accountId: string): number {
   return movements.reduce(
