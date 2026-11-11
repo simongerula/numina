@@ -4,7 +4,12 @@ Local SQLite database (file `data/numina.db`, gitignored).
 
 ```
 accounts ────< movements
+budget_categories ────< budget_entries
 ```
+
+The budgeting tables are a **separate data domain** from the ledger. The only
+bridge is *savings*, which is **derived live** from deposit movements —
+withdrawals and adjustments never appear in budgeting.
 
 ---
 
@@ -46,6 +51,39 @@ CREATE INDEX IF NOT EXISTS idx_movements_account ON movements(account_id);
 CREATE INDEX IF NOT EXISTS idx_movements_date ON movements(date);
 ```
 
+Budgeting (separate domain; applied by the same first-run migration, so
+existing databases pick the tables up on next start):
+
+```sql
+CREATE TABLE IF NOT EXISTS budget_categories (
+  id          TEXT PRIMARY KEY,
+  kind        TEXT NOT NULL CHECK (kind IN ('expense', 'other')),
+  name        TEXT NOT NULL,
+  color       TEXT NOT NULL,             -- hex, for charts
+  sort_order  INTEGER NOT NULL DEFAULT 0,
+  archived    INTEGER NOT NULL DEFAULT 0, -- soft delete; entries keep history
+  created_at  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS budget_entries (
+  id            TEXT PRIMARY KEY,
+  kind          TEXT NOT NULL CHECK (kind IN ('income', 'expense', 'other')),
+  category_id   TEXT REFERENCES budget_categories(id), -- NULL for income
+  date          TEXT NOT NULL,           -- YYYY-MM-DD
+  amount_cents  INTEGER NOT NULL,        -- always positive; sign implied by kind
+  note          TEXT NOT NULL DEFAULT '',
+  created_at    TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_budget_entries_date ON budget_entries(date);
+CREATE INDEX IF NOT EXISTS idx_budget_entries_category ON budget_entries(category_id);
+```
+
+On first run, empty `budget_categories` kinds are seeded with sensible
+defaults — expenses: Rent, Power, Gas, Water, Internet, Groceries; other:
+Coffee, Clothes, Tech, Fun. Seeding only fills an *empty* kind; user-created
+categories are never overwritten.
+
 Pragmas:
 
 ```sql
@@ -62,9 +100,12 @@ PRAGMA foreign_keys = ON;
 | Account balance | `SUM(amount_cents)` for the account (SQL join at read time) |
 | Monthly profit (delta) | `SUM(amount_cents)` filtered to the same `YYYY-MM` prefix |
 | Balance over time | End-of-month cumulative balance per account + Total series (`lib/series.ts`) |
+| Budget savings | `SUM(amount_cents)` of **deposit** movements per month (only ledger → budget link) |
+| Budget spent / income | `SUM(amount_cents)` of `budget_entries` per month, kind `expense`+`other` / kind `income` (`lib/budget.ts`) |
+| Spending breakdown | `budget_entries` grouped by `category_id` for the selected month (`lib/budget.ts`) |
 
-All derived charts/tables compute from movement rows; there are no persistent
-views to keep in sync.
+All derived charts/tables compute from movement/budget-entry rows; there are no
+persistent views to keep in sync.
 
 ---
 
@@ -76,4 +117,5 @@ views to keep in sync.
   `PATCH { archived: true }` archive, `PATCH { archived: false }` restores, and
   movements always stay intact).
 - The only writers are the `/api/*` route handlers behind the localhost guard
-  and Zod validation.
+  and Zod validation. Budget categories are archived, never hard-deleted, so
+  entry history stays intact; budget entries hard-delete individually.

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import type { Account, Movement } from "@/lib/types";
-import { formatDate, formatPeriod, formatMoney } from "@/lib/format";
+import { formatDate, formatPeriod, formatMoney, centsFromInput } from "@/lib/format";
 import { currentPeriod } from "@/lib/series";
 import { useBalancesHidden } from "@/hooks/useBalancesHidden";
 import { cn } from "@/lib/utils";
@@ -33,14 +33,6 @@ const today = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
-
-function centsFromInput(raw: string): number | null {
-  const n = Number(raw.replace(/[$,\s]/g, ""));
-  if (!Number.isFinite(n) || n === 0) return null;
-  const cents = Math.round(n * 100);
-  return Math.abs(n * 100 - cents) > 1e-6 ? null : cents; // reject > 2dp
-}
-
 /** Excel-like inline-editable ledger: Period | Date | Account | Type | Amount | Note */
 export function Ledger({
   accounts,

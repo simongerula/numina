@@ -54,7 +54,57 @@ export const movementUpdateSchema = z.object({
   note: z.string().max(300).optional(),
 });
 
+// Budgeting
+
+const budgetCategoryKind = z.enum(["expense", "other"]);
+const budgetEntryKind = z.enum(["income", "expense", "other"]);
+
+export const budgetCategoryCreateSchema = z.object({
+  kind: budgetCategoryKind,
+  name: z.string().trim().min(1).max(60),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  sort_order: z.number().int().optional(),
+});
+
+export const budgetCategoryUpdateSchema = z.object({
+  name: z.string().trim().min(1).max(60).optional(),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  sort_order: z.number().int().min(0).max(9999).optional(),
+  /** Soft-hide: archived categories vanish from pickers but keep entry history. */
+  archived: z.boolean().optional(),
+});
+
+/**
+ * Amount arrives in cents, always positive — the sign is implied by the kind.
+ * Income has no category (free-text note instead); expense/other require one.
+ */
+export const budgetEntryCreateSchema = z
+  .object({
+    kind: budgetEntryKind,
+    category_id: id.nullish(),
+    date: dateStr,
+    amount: centsInt,
+    note: z.string().max(300).optional().default(""),
+  })
+  .refine((v) => v.amount > 0, "amount must be positive")
+  .refine(
+    (v) => (v.kind === "income" ? !v.category_id : !!v.category_id),
+    "income takes no category; expense/other require one"
+  );
+
+export const budgetEntryUpdateSchema = z.object({
+  kind: budgetEntryKind.optional(),
+  category_id: id.nullish(),
+  date: dateStr.optional(),
+  amount: centsInt.optional(),
+  note: z.string().max(300).optional(),
+});
+
 export type AccountCreate = z.infer<typeof accountCreateSchema>;
 export type AccountUpdate = z.infer<typeof accountUpdateSchema>;
 export type MovementCreate = z.infer<typeof movementCreateSchema>;
 export type MovementUpdate = z.infer<typeof movementUpdateSchema>;
+export type BudgetCategoryCreate = z.infer<typeof budgetCategoryCreateSchema>;
+export type BudgetCategoryUpdate = z.infer<typeof budgetCategoryUpdateSchema>;
+export type BudgetEntryCreate = z.infer<typeof budgetEntryCreateSchema>;
+export type BudgetEntryUpdate = z.infer<typeof budgetEntryUpdateSchema>;

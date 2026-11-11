@@ -28,6 +28,7 @@ Numbers you can check:
 - **An Excel-style editable ledger** - deposits, withdrawals, and adjustments as plain rows, editable right in the table.
 - **A hide-balances toggle** - one click blanks every amount on screen before you pass your laptop over.
 - **A set-new-balance helper** - reconciled to a real statement number but don't know the movement? Enter the balance, Numina works out the adjustment.
+- **A budgeting page** - months at a glance (saved from your ledger deposits, spent from budget entries), a donut of where the money went, and spreadsheet-style income / expense / other tables with your own categories.
 
 ## How to use
 
@@ -70,7 +71,7 @@ To back up: copy the file. To start over: delete it.
 | UI | Next.js (App Router) + React + Tailwind + shadcn/ui |
 | Charts | Recharts |
 | Storage | SQLite via `better-sqlite3`, file at `data/numina.db` |
-| API | Next.js Route Handlers (`/api/accounts`, `/api/movements`) |
+| API | Next.js Route Handlers (`/api/accounts`, `/api/movements`, `/api/budget/*`) |
 | Validation | Zod on every write |
 | Fonts | next/font, self-hosted at build time |
 

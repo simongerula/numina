@@ -30,3 +30,11 @@ export function formatDate(date: string): string {
   const names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   return `${String(d).padStart(2, "0")} ${names[m - 1]} ${y}`;
 }
+
+/** Typed dollars → integer cents, or null when not a usable money value (>2dp, 0, NaN). */
+export function centsFromInput(raw: string): number | null {
+  const n = Number(raw.replace(/[$,\s]/g, ""));
+  if (!Number.isFinite(n) || n === 0) return null;
+  const cents = Math.round(n * 100);
+  return Math.abs(n * 100 - cents) > 1e-6 ? null : cents; // reject > 2dp
+}

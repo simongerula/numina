@@ -4,6 +4,7 @@ import { Ledger } from "@/components/dashboard/ledger";
 import { MonthlyChangeRow } from "@/components/dashboard/monthly-change-row";
 import { listAccounts, listArchivedAccounts, listMovements } from "@/lib/db/queries";
 import numinaIcon from "./icon.png";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,12 @@ export default function DashboardPage() {
             </p>
           </div>
         </div>
+        <Link
+          href="/budgeting"
+          className="rounded-lg border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
+        >
+          Budgeting
+        </Link>
       </header>
 
       {/* Definite row height on desktop so the chart card and accounts card match;
