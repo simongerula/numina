@@ -16,51 +16,68 @@ export function formatMonthLabel(period: string, withYear = false): string {
   return withYear ? `${name} '${period.slice(2, 4)}` : name;
 }
 
+/** The last `count` calendar periods ("YYYY-MM"), newest first. */
+export function lastMonths(count: number, now = new Date()): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  }
+  return out;
+}
+
 /**
- * Per-month overview, newest first: every month that has activity plus the
- * current month. Savings are the month's deposit totals (the only link to
- * the ledger); spent and income come from budget entries.
+ * Per-month overview, newest first: the last 12 calendar months, always
+ * ending with the current month. Savings are the month's deposit totals
+ * (the only link to the ledger); spent and income come from budget entries.
  */
 export function buildBudgetMonths(
   deposits: Array<{ period: string; cents: number }>,
   entries: BudgetEntry[]
 ): BudgetMonth[] {
-  const now = new Date();
-  const current = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const periods = lastMonths(12);
 
-  const months = new Map<string, BudgetMonth>();
-  const bucket = (period: string): BudgetMonth => {
-    let m = months.get(period);
-    if (!m) {
-      m = { period, saved: 0, spent: 0, income: 0 };
-      months.set(period, m);
-    }
-    return m;
-  };
+  const months = new Map<string, BudgetMonth>(
+    periods.map((p) => [p, { period: p, saved: 0, spent: 0, income: 0 }])
+  );
 
   // Savings: deposits only — withdrawals and adjustments never appear here.
-  for (const d of deposits) bucket(d.period).saved += d.cents;
-
-  for (const e of entries) {
-    const b = bucket(e.date.slice(0, 7));
-    if (e.kind === "income") b.income += e.amount_cents;
-    else b.spent += e.amount_cents;
+  for (const d of deposits) {
+    const m = months.get(d.period);
+    if (m) m.saved += d.cents;
   }
 
-  bucket(current); // the series always ends "now"
+  for (const e of entries) {
+    const m = months.get(e.date.slice(0, 7));
+    if (!m) continue;
+    if (e.kind === "income") m.income += e.amount_cents;
+    else m.spent += e.amount_cents;
+  }
 
-  return Array.from(months.values()).sort((a, b) => b.period.localeCompare(a.period));
+  return periods.map((p) => months.get(p) as BudgetMonth);
 }
 
-/** Donut slice per category (expense + other) for one month, largest first. */
+/** Donut chart window: all time (default), year to date, or one "YYYY-MM". */
+export type SpendingRange = "all" | "ytd" | `${number}-${number}`;
+
+/** Donut slice per category (expense + other) for the selected window, largest first. */
 export function spendingByCategory(
   entries: BudgetEntry[],
-  period: string
+  range: SpendingRange
 ): Array<{ categoryId: string; name: string; color: string; cents: number }> {
+  const now = new Date();
+  const current = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const inRange = (date: string): boolean => {
+    if (range === "all") return true;
+    const period = date.slice(0, 7);
+    if (range === "ytd") return period >= `${now.getFullYear()}-01` && period <= current;
+    return period === range;
+  };
+
   const slices = new Map<string, { categoryId: string; name: string; color: string; cents: number }>();
 
   for (const e of entries) {
-    if (e.kind === "income" || !e.date.startsWith(period)) continue;
+    if (e.kind === "income" || !inRange(e.date)) continue;
     const key = e.category_id ?? "uncategorized";
     const slice = slices.get(key) ?? {
       categoryId: key,

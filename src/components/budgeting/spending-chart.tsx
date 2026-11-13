@@ -2,30 +2,74 @@
 
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import type { BudgetEntry } from "@/lib/types";
-import { spendingByCategory } from "@/lib/budget";
+import { formatMonthLabel, spendingByCategory, type SpendingRange } from "@/lib/budget";
 import { formatMoney } from "@/lib/format";
 import { useBalancesHidden } from "@/hooks/useBalancesHidden";
+import { cn } from "@/lib/utils";
+
+/** Which window the donut shows: all time, year to date, or the strip's month. */
+export type SpendingChartMode = "all" | "ytd" | "month";
 
 /**
- * Where the money went for the selected month: one donut slice per category
- * (expense + other entries), largest first, with a legend breakdown.
+ * Where the money went for the selected window: one donut slice per category
+ * (expense + other entries), largest first, with a legend breakdown. All
+ * time / year to date are picked here; a specific month comes from the
+ * month strip above (selecting a month switches this chart to it).
  */
-export function SpendingChart({ entries, period }: { entries: BudgetEntry[]; period: string }) {
+export function SpendingChart({
+  entries,
+  period,
+  mode,
+  onModeChange,
+}: {
+  entries: BudgetEntry[];
+  period: string;
+  mode: SpendingChartMode;
+  onModeChange: (mode: SpendingChartMode) => void;
+}) {
   const { hidden } = useBalancesHidden();
-  const slices = spendingByCategory(entries, period);
+  const range: SpendingRange = mode === "month" ? (period as SpendingRange) : mode;
+
+  const slices = spendingByCategory(entries, range);
   const total = slices.reduce((sum, s) => sum + s.cents, 0);
+  const emptyText =
+    mode === "all"
+      ? "No spending recorded yet."
+      : mode === "ytd"
+        ? "No spending recorded this year yet."
+        : `No spending recorded for ${formatMonthLabel(period, true)} yet.`;
+
+  const pills: Array<{ id: SpendingChartMode; label: string }> = [
+    { id: "all", label: "All time" },
+    { id: "ytd", label: "Year to date" },
+  ];
 
   return (
     <section className="flex flex-col rounded-xl border bg-card text-card-foreground shadow-sm lg:h-full lg:flex-1">
-      <header className="flex items-center justify-between px-5 pt-5">
+      <header className="flex flex-col gap-3 px-5 pt-5 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-sm font-semibold uppercase tracking-wide">Where the money went</h2>
+        <div className="flex rounded-lg bg-muted p-1">
+          {pills.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => onModeChange(p.id)}
+              aria-pressed={mode === p.id}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                mode === p.id
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
       </header>
 
       {slices.length === 0 ? (
         <div className="flex flex-1 items-center justify-center px-5 pb-8 pt-4">
-          <p className="text-sm text-muted-foreground">
-            No spending recorded for this month yet.
-          </p>
+          <p className="text-sm text-muted-foreground">{emptyText}</p>
         </div>
       ) : (
         <div className="flex flex-1 flex-col gap-4 px-5 pb-5 pt-3 sm:flex-row sm:items-center">

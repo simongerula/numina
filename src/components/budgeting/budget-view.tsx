@@ -7,13 +7,14 @@ import { currentPeriod } from "@/lib/series";
 import { formatMoney } from "@/lib/format";
 import { useBalancesHidden } from "@/hooks/useBalancesHidden";
 import { MonthStrip } from "@/components/budgeting/month-strip";
-import { SpendingChart } from "@/components/budgeting/spending-chart";
+import { SpendingChart, type SpendingChartMode } from "@/components/budgeting/spending-chart";
 import { BudgetTable } from "@/components/budgeting/budget-table";
 import { cn } from "@/lib/utils";
 
 /**
  * Budgeting view: month strip → spending breakdown + month summary →
- * income / expenses / other tables. Selected month drives chart and tables.
+ * income / expenses / other tables. Selected month drives summary and tables;
+ * the donut shows all time or year to date until a strip month is picked.
  */
 export function BudgetView({
   deposits,
@@ -31,6 +32,8 @@ export function BudgetView({
   archivedOtherCategories: BudgetCategory[];
 }) {
   const [period, setPeriod] = useState(currentPeriod());
+  // The donut shows all time until a month is picked on the strip.
+  const [chartMode, setChartMode] = useState<SpendingChartMode>("all");
   const { hidden } = useBalancesHidden();
 
   const months = buildBudgetMonths(deposits, entries);
@@ -41,11 +44,18 @@ export function BudgetView({
 
   return (
     <div className="space-y-6">
-      <MonthStrip months={months} selected={selectedPeriod} onSelect={setPeriod} />
+      <MonthStrip
+        months={months}
+        selected={selectedPeriod}
+        onSelect={(p) => {
+          setPeriod(p);
+          setChartMode("month");
+        }}
+      />
 
       <div className="grid items-stretch gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 lg:flex">
-          <SpendingChart entries={entries} period={selectedPeriod} />
+          <SpendingChart entries={entries} period={selectedPeriod} mode={chartMode} onModeChange={setChartMode} />
         </div>
         <section className="flex flex-col justify-center gap-3 rounded-xl border bg-card p-5 text-card-foreground shadow-sm">
           <SummaryRow label="Income" cents={selected?.income ?? 0} hidden={hidden} />
