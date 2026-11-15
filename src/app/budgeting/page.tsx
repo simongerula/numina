@@ -5,12 +5,14 @@ import {
   listBudgetCategories,
   listBudgetEntries,
   listDepositTotalsByMonth,
+  listDepositTotalsByMonthByAccount,
 } from "@/lib/db/queries";
 
 export const dynamic = "force-dynamic";
 
 export default function BudgetingPage() {
   const deposits = listDepositTotalsByMonth();
+  const savings = listDepositTotalsByMonthByAccount();
   const entries = listBudgetEntries();
   const expenseCategories = listBudgetCategories("expense");
   const otherCategories = listBudgetCategories("other");
@@ -36,6 +38,7 @@ export default function BudgetingPage() {
 
       <BudgetView
         deposits={deposits}
+        savings={savings}
         entries={entries}
         expenseCategories={expenseCategories}
         otherCategories={otherCategories}

@@ -91,3 +91,35 @@ export function spendingByCategory(
 
   return Array.from(slices.values()).sort((a, b) => b.cents - a.cents);
 }
+
+/**
+ * Donut slice per ledger account for the month's savings: deposits only, one
+ * slice per account, largest first. Only that month's ("YYYY-MM") deposits
+ * are counted.
+ */
+export function savingsByAccount(
+  deposits: Array<{
+    period: string;
+    account_id: string;
+    account_name: string;
+    account_color: string;
+    cents: number;
+  }>,
+  period: string
+): Array<{ accountId: string; name: string; color: string; cents: number }> {
+  const slices = new Map<string, { accountId: string; name: string; color: string; cents: number }>();
+
+  for (const d of deposits) {
+    if (d.period !== period) continue;
+    const slice = slices.get(d.account_id) ?? {
+      accountId: d.account_id,
+      name: d.account_name,
+      color: d.account_color,
+      cents: 0,
+    };
+    slice.cents += d.cents;
+    slices.set(d.account_id, slice);
+  }
+
+  return Array.from(slices.values()).sort((a, b) => b.cents - a.cents);
+}

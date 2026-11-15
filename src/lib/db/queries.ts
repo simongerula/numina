@@ -192,6 +192,39 @@ export function listDepositTotalsByMonth(): Array<{ period: string; cents: numbe
     .all() as Array<{ period: string; cents: number }>;
 }
 
+/**
+ * Same deposits as listDepositTotalsByMonth, but split per ledger account so
+ * the budgeting view can show which account the savings went into (aggregate
+ * client-side for all time or a single month). Deposits into archived
+ * accounts still count — the money was saved there.
+ */
+export function listDepositTotalsByMonthByAccount(): Array<{
+  period: string;
+  account_id: string;
+  account_name: string;
+  account_color: string;
+  cents: number;
+}> {
+  return getDb()
+    .prepare(
+      `SELECT strftime('%Y-%m', m.date) AS period, m.account_id,
+              a.name AS account_name, a.color AS account_color,
+              SUM(m.amount_cents) AS cents
+       FROM movements m
+       JOIN accounts a ON a.id = m.account_id
+       WHERE m.type = 'deposit'
+       GROUP BY period, m.account_id
+       ORDER BY period DESC`
+    )
+    .all() as Array<{
+    period: string;
+    account_id: string;
+    account_name: string;
+    account_color: string;
+    cents: number;
+  }>;
+}
+
 // ---------------------------------------------------------------------------
 // Budget categories
 // ---------------------------------------------------------------------------
