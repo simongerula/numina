@@ -46,7 +46,7 @@ export function CategoryManager({
     const trimmed = name.trim();
     if (busy || !trimmed) return;
     setBusy(true);
-    const res = await fetch("/api/budget/categories", {
+    const res = await fetch("/api/expenses/categories", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ kind, name: trimmed, color }),
@@ -61,7 +61,7 @@ export function CategoryManager({
   const archive = async (id: string) => {
     if (busy) return;
     setBusy(true);
-    const res = await fetch(`/api/budget/categories/${id}`, {
+    const res = await fetch(`/api/expenses/categories/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ archived: true }),
@@ -73,7 +73,7 @@ export function CategoryManager({
   const restore = async (id: string) => {
     if (busy) return;
     setBusy(true);
-    const res = await fetch(`/api/budget/categories/${id}`, {
+    const res = await fetch(`/api/expenses/categories/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ archived: false }),

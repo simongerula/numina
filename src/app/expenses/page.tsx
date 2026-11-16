@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { BudgetView } from "@/components/budgeting/budget-view";
+import numinaIcon from "@/app/icon.png";
+import { ExpensesView } from "@/components/expenses/expenses-view";
 import {
   listArchivedBudgetCategories,
   listBudgetCategories,
@@ -22,11 +23,20 @@ export default function BudgetingPage() {
   return (
     <main className="mx-auto min-h-dvh max-w-6xl space-y-6 px-4 py-8">
       <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Budgeting</h1>
-          <p className="text-sm text-muted-foreground">
-            Where the money goes. Savings come straight from your ledger deposits.
-          </p>
+        <div className="flex items-center gap-3">
+          <img
+            src={numinaIcon.src}
+            alt=""
+            width={40}
+            height={40}
+            className="size-10 rounded-xl shadow-sm"
+          />
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Expenses</h1>
+            <p className="text-sm text-muted-foreground">
+              Where the money goes. Savings come straight from your ledger deposits.
+            </p>
+          </div>
         </div>
         <Link
           href="/"
@@ -36,7 +46,7 @@ export default function BudgetingPage() {
         </Link>
       </header>
 
-      <BudgetView
+      <ExpensesView
         deposits={deposits}
         savings={savings}
         entries={entries}

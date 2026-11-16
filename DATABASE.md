@@ -101,8 +101,8 @@ PRAGMA foreign_keys = ON;
 | Monthly profit (delta) | `SUM(amount_cents)` filtered to the same `YYYY-MM` prefix |
 | Balance over time | End-of-month cumulative balance per account + Total series (`lib/series.ts`) |
 | Budget savings | `SUM(amount_cents)` of **deposit** movements per month (only ledger → budget link) |
-| Budget spent / income | `SUM(amount_cents)` of `budget_entries` per month, kind `expense`+`other` / kind `income` (`lib/budget.ts`) |
-| Spending breakdown | `budget_entries` grouped by `category_id` for the selected month (`lib/budget.ts`) |
+| Budget spent / income | `SUM(amount_cents)` of `budget_entries` per month, kind `expense`+`other` / kind `income` (`lib/expenses.ts`) |
+| Spending breakdown | `budget_entries` grouped by `category_id` for the selected month (`lib/expenses.ts`) |
 
 All derived charts/tables compute from movement/budget-entry rows; there are no
 persistent views to keep in sync.

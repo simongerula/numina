@@ -1,7 +1,7 @@
 "use client";
 
 import type { BudgetMonth } from "@/lib/types";
-import { formatMonthLabel } from "@/lib/budget";
+import { formatMonthLabel } from "@/lib/expenses";
 import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useBalancesHidden } from "@/hooks/useBalancesHidden";

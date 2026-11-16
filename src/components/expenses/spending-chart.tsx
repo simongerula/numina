@@ -2,7 +2,7 @@
 
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import type { BudgetEntry } from "@/lib/types";
-import { formatMonthLabel, spendingByCategory, type SpendingRange } from "@/lib/budget";
+import { formatMonthLabel, spendingByCategory, type SpendingRange } from "@/lib/expenses";
 import { formatMoney } from "@/lib/format";
 import { useBalancesHidden } from "@/hooks/useBalancesHidden";
 import { cn } from "@/lib/utils";

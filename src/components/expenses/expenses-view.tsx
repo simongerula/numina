@@ -2,23 +2,23 @@
 
 import { useState } from "react";
 import type { BudgetCategory, BudgetEntry } from "@/lib/types";
-import { buildBudgetMonths, formatMonthLabel } from "@/lib/budget";
+import { buildExpenseMonths, formatMonthLabel } from "@/lib/expenses";
 import { currentPeriod } from "@/lib/series";
 import { formatMoney } from "@/lib/format";
 import { useBalancesHidden } from "@/hooks/useBalancesHidden";
-import { MonthStrip } from "@/components/budgeting/month-strip";
-import { SpendingChart, type SpendingChartMode } from "@/components/budgeting/spending-chart";
-import { SavingsDonut } from "@/components/budgeting/savings-donut";
-import { BudgetTable } from "@/components/budgeting/budget-table";
+import { MonthStrip } from "@/components/expenses/month-strip";
+import { SpendingChart, type SpendingChartMode } from "@/components/expenses/spending-chart";
+import { SavingsDonut } from "@/components/expenses/savings-donut";
+import { ExpensesTable } from "@/components/expenses/expenses-table";
 import { cn } from "@/lib/utils";
 
 /**
- * Budgeting view: month strip → spending breakdown + month summary →
+ * Expenses view: month strip → spending breakdown + month summary →
  * income / expenses / other tables. Selected month drives summary, tables and
  * the summary card's savings donut (hidden until a strip month is picked);
  * the big donut shows all time or year to date until a strip month is picked.
  */
-export function BudgetView({
+export function ExpensesView({
   deposits,
   savings,
   entries,
@@ -46,7 +46,7 @@ export function BudgetView({
   const [chartMode, setChartMode] = useState<SpendingChartMode>("all");
   const { hidden } = useBalancesHidden();
 
-  const months = buildBudgetMonths(deposits, entries);
+  const months = buildExpenseMonths(deposits, entries);
   // Fall back to the current month if the selection no longer has activity.
   const selectedPeriod = months.some((m) => m.period === period) ? period : currentPeriod();
   const selected = months.find((m) => m.period === selectedPeriod);
@@ -96,21 +96,21 @@ export function BudgetView({
         </section>
       </div>
 
-      <BudgetTable
+      <ExpensesTable
         kind="income"
         period={selectedPeriod}
         entries={entries}
         categories={[]}
         archivedCategories={[]}
       />
-      <BudgetTable
+      <ExpensesTable
         kind="expense"
         period={selectedPeriod}
         entries={entries}
         categories={expenseCategories}
         archivedCategories={archivedExpenseCategories}
       />
-      <BudgetTable
+      <ExpensesTable
         kind="other"
         period={selectedPeriod}
         entries={entries}

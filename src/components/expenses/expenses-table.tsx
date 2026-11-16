@@ -8,7 +8,7 @@ import { centsFromInput, formatDate, formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useBalancesHidden } from "@/hooks/useBalancesHidden";
 import { Button } from "@/components/ui/button";
-import { CategoryManager } from "@/components/budgeting/category-manager";
+import { CategoryManager } from "@/components/expenses/category-manager";
 
 const KIND_LABEL: Record<BudgetEntryKind, string> = {
   income: "Income",
@@ -34,11 +34,11 @@ interface Draft {
 }
 
 /**
- * One budgeting table (income, expenses, or other): add-row on top,
+ * One expenses table (income, expenses, or other): add-row on top,
  * click-to-edit rows, per-row delete. Income is free text (no category);
  * expense/other pick from their own category pool, managed in a dialog.
  */
-export function BudgetTable({
+export function ExpensesTable({
   kind,
   period,
   entries,
@@ -108,7 +108,7 @@ export function BudgetTable({
 
   const commitMutation = async (init: RequestInit, id?: string) => {
     setBusy(true);
-    const res = await fetch("/api/budget/entries" + (id ? `/${id}` : ""), {
+    const res = await fetch("/api/expenses/entries" + (id ? `/${id}` : ""), {
       headers: { "Content-Type": "application/json" },
       ...init,
     });
@@ -141,7 +141,7 @@ export function BudgetTable({
   const remove = async (id: string) => {
     if (busy) return;
     setBusy(true);
-    const res = await fetch(`/api/budget/entries/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/expenses/entries/${id}`, { method: "DELETE" });
     setBusy(false);
     if (res.ok) router.refresh();
   };

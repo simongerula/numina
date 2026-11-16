@@ -1,7 +1,7 @@
 "use client";
 
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import { savingsByAccount } from "@/lib/budget";
+import { savingsByAccount } from "@/lib/expenses";
 import { formatMoney } from "@/lib/format";
 import { useBalancesHidden } from "@/hooks/useBalancesHidden";
 

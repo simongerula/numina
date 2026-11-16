@@ -1,7 +1,7 @@
 import type { BudgetEntry, BudgetMonth } from "@/lib/types";
 
 /**
- * Pure (no DB) derived-data helpers for budgeting, safe to import from
+ * Pure (no DB) derived-data helpers for the expenses page, safe to import from
  * client components. Mirrors lib/series.ts conventions.
  */
 
@@ -31,7 +31,7 @@ export function lastMonths(count: number, now = new Date()): string[] {
  * ending with the current month. Savings are the month's deposit totals
  * (the only link to the ledger); spent and income come from budget entries.
  */
-export function buildBudgetMonths(
+export function buildExpenseMonths(
   deposits: Array<{ period: string; cents: number }>,
   entries: BudgetEntry[]
 ): BudgetMonth[] {
