@@ -17,12 +17,9 @@ declare global {
   var __numinaDb: Database.Database | undefined;
 }
 
-function createDatabase(): Database.Database {
-  const db = new Database(DB_PATH);
-  db.pragma("journal_mode = WAL");
-  db.pragma("foreign_keys = ON");
-
-  db.exec(`
+/** DDL applied on first run. Exported so the test suite can build an
+ *  identical in-memory database without touching the real one. */
+export const SCHEMA_SQL = `
     CREATE TABLE IF NOT EXISTS accounts (
       id          TEXT PRIMARY KEY,
       name        TEXT NOT NULL,
@@ -69,7 +66,14 @@ function createDatabase(): Database.Database {
 
     CREATE INDEX IF NOT EXISTS idx_budget_entries_date ON budget_entries(date);
     CREATE INDEX IF NOT EXISTS idx_budget_entries_category ON budget_entries(category_id);
-  `);
+  `;
+
+function createDatabase(): Database.Database {
+  const db = new Database(DB_PATH);
+  db.pragma("journal_mode = WAL");
+  db.pragma("foreign_keys = ON");
+
+  db.exec(SCHEMA_SQL);
 
   seedBudgetCategories(db);
 

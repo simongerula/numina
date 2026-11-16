@@ -1,27 +1,33 @@
 # Numina - Database Design
 
-Local SQLite database (file `data/numina.db`, gitignored).
+Local SQLite database (file `data/numina.db`, gitignored). **The whole ledger
+is that one file** — back it up by copying it, start over by deleting it.
 
 ```
-accounts ────< movements
-budget_categories ────< budget_entries
+accounts ────< movements            (the ledger: balances over time)
+budget_categories ────< budget_entries   (the expenses page)
 ```
 
-The budgeting tables are a **separate data domain** from the ledger. The only
-bridge is *savings*, which is **derived live** from deposit movements —
-withdrawals and adjustments never appear in budgeting.
+These are **two separate data domains**. The only bridge is *savings*, which
+is derived live from deposit movements — withdrawals and adjustments never
+appear on the expenses page.
 
 ---
 
 ## Conventions
 
 - **Money**: integer cents everywhere (`amount_cents`). Converted to dollars
-  only at the UI edge.
+  only at the UI edge. No floats, no string amounts.
 - **Signs applied at write time**: `deposit` → positive, `withdraw` → negative,
-  `adjustment` → as given (may be negative). Readers may simply `SUM`.
+  `adjustment` → as given (may be negative). Readers simply `SUM(amount_cents)`.
+- **Editing preserves this rule**: changing a movement's `type` without
+  supplying a new amount re-derives the sign from the stored magnitude
+  (a deposit edited into a withdrawal actually flips).
 - **IDs**: `crypto.randomUUID()` text PKs.
-- **Dates**: ISO `YYYY-MM-DD` strings (validated by Zod + regex).
+- **Dates**: ISO `YYYY-MM-DD` strings (validated by Zod).
 - **Timestamps**: ISO 8601 strings (SQLite `TEXT`).
+- **Soft deletes**: accounts and categories are *archived* (never hard-deleted)
+  so history stays intact. Budget entries and movements delete individually.
 
 ---
 
@@ -51,8 +57,8 @@ CREATE INDEX IF NOT EXISTS idx_movements_account ON movements(account_id);
 CREATE INDEX IF NOT EXISTS idx_movements_date ON movements(date);
 ```
 
-Budgeting (separate domain; applied by the same first-run migration, so
-existing databases pick the tables up on next start):
+Expenses (same first-run migration, so existing databases pick the tables up
+on next start):
 
 ```sql
 CREATE TABLE IF NOT EXISTS budget_categories (
@@ -93,6 +99,32 @@ PRAGMA foreign_keys = ON;
 
 ---
 
+## How the schema evolves (read before changing any table)
+
+There is **no migration system yet**. The DDL is `CREATE TABLE IF NOT
+EXISTS`, applied on every startup — it can create *new* tables, but it will
+never alter existing ones. Practical consequences:
+
+- Adding a **new table**: safe; existing databases pick it up on next start.
+- Adding a **column to an existing table**: needs a migration step (e.g.
+  `ALTER TABLE ... ADD COLUMN` guarded by a version marker). Open an issue /
+  design it with the maintainer first.
+- The DDL is exported as `SCHEMA_SQL` from `src/lib/db/index.ts` and reused
+  by the test suite, so the tested schema and the real schema can't drift.
+
+---
+
+## Testing
+
+`pnpm test` runs Vitest. The query-layer tests (`src/lib/db/queries.test.ts`)
+build an **in-memory** SQLite database from `SCHEMA_SQL` and mock `getDb()`,
+so they exercise the exact same SQL as production **without ever touching
+`data/numina.db`**. Never point tests at the real file — it is user
+financial data. CI runs lint, typecheck, and tests on every PR
+(`.github/workflows/ci.yml`).
+
+---
+
 ## Derived values
 
 | Metric | Formula |
@@ -100,8 +132,8 @@ PRAGMA foreign_keys = ON;
 | Account balance | `SUM(amount_cents)` for the account (SQL join at read time) |
 | Monthly profit (delta) | `SUM(amount_cents)` filtered to the same `YYYY-MM` prefix |
 | Balance over time | End-of-month cumulative balance per account + Total series (`lib/series.ts`) |
-| Budget savings | `SUM(amount_cents)` of **deposit** movements per month (only ledger → budget link) |
-| Budget spent / income | `SUM(amount_cents)` of `budget_entries` per month, kind `expense`+`other` / kind `income` (`lib/expenses.ts`) |
+| Expenses-page savings | `SUM(amount_cents)` of **deposit** movements per month (only ledger → expenses link) |
+| Spent / income | `SUM(amount_cents)` of `budget_entries` per month, kind `expense`+`other` / kind `income` (`lib/expenses.ts`) |
 | Spending breakdown | `budget_entries` grouped by `category_id` for the selected month (`lib/expenses.ts`) |
 
 All derived charts/tables compute from movement/budget-entry rows; there are no
@@ -112,10 +144,9 @@ persistent views to keep in sync.
 ## Safety properties
 
 - Every statement is **prepared** with bound parameters - no interpolated SQL.
-- Foreign keys are enforced (deleting an account cascades its movements; in the
-  UI accounts are **hidden**, never hard-deleted — `DELETE` and
-  `PATCH { archived: true }` archive, `PATCH { archived: false }` restores, and
-  movements always stay intact).
+- Foreign keys are enforced. In the UI accounts are hidden, never hard-deleted,
+  so movements always stay intact; budget categories archive the same way and
+  budget entries hard-delete individually.
 - The only writers are the `/api/*` route handlers behind the localhost guard
-  and Zod validation. Budget categories are archived, never hard-deleted, so
-  entry history stays intact; budget entries hard-delete individually.
+  and Zod validation. Direct page reads (server components) go through
+  `queries.ts` too — no component builds its own SQL.

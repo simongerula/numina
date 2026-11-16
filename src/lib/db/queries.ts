@@ -154,6 +154,13 @@ export function updateMovement(id: string, data: MovementUpdate): void {
     if (type === "deposit") amountCents = data.amount;
     else if (type === "withdraw") amountCents = -data.amount;
     else amountCents = data.amount; // adjustment: signed as given
+  } else if (type !== row.type) {
+    // Type changed without a new amount — re-derive the sign from the stored
+    // magnitude so a deposit edited into a withdrawal actually flips.
+    const magnitude = Math.abs(row.amount_cents);
+    if (type === "deposit") amountCents = magnitude;
+    else if (type === "withdraw") amountCents = -magnitude;
+    else amountCents = row.amount_cents; // adjustment keeps the signed value
   } else {
     amountCents = row.amount_cents;
   }

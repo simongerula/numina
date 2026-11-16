@@ -7,7 +7,18 @@ const id = z.string().uuid();
 const dateStr = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "date must be YYYY-MM-DD")
-  .refine((s) => !Number.isNaN(new Date(s + "T00:00:00").getTime()), "invalid date");
+  // JS Date silently rolls over impossible dates (2026-02-31 → Mar 3), so
+  // parse in UTC and verify the round-trip components match the input.
+  .refine((s) => {
+    const [y, m, d] = s.split("-").map(Number);
+    const dt = new Date(`${s}T00:00:00Z`);
+    return (
+      !Number.isNaN(dt.getTime()) &&
+      dt.getUTCFullYear() === y &&
+      dt.getUTCMonth() === m - 1 &&
+      dt.getUTCDate() === d
+    );
+  }, "invalid date");
 
 /**
  * Amount arrives in cents from the client (integer). For deposit/withdraw it

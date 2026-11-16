@@ -36,12 +36,16 @@ One-time requirements before the install command will work:
 
 - **Node.js 20+** — Next.js 16 and better-sqlite3 13 both need a modern
   runtime. If no prebuilt binary matches your Node version,
-  better-sqlite3 compiles from source, which on macOS requires the
-  Xcode Command Line Tools (`xcode-select --install`).
+  better-sqlite3 compiles from source: on macOS that needs the Xcode
+  Command Line Tools (`xcode-select --install`); on Windows it needs
+  Visual Studio Build Tools.
 - **pnpm** — the package manager this project is pinned to
   (`packageManager` in `package.json`). If you have Node but not pnpm:
   `corepack enable` or `npm i -g pnpm`. If you've never run `pnpm setup`,
   step 3/3 of `numina install` will say so and tell you what to do.
+- **Windows works too.** `numina install` drops a `numina.cmd` shim into
+  pnpm's global bin dir (no Developer Mode or admin rights needed), and the
+  app itself is platform-neutral. macOS and Linux get a symlink instead.
 
 > **Heads up about the first install:** `pnpm numina install` *does* use
 > the network — that's the dependency download, and it's the only time.

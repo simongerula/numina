@@ -36,7 +36,14 @@ export function localGuard(req: Request): Response | null {
 
   const origin = req.headers.get("origin");
   if (req.method !== "GET" && req.method !== "HEAD") {
-    if (!origin || new URL(origin).host !== host) {
+    // Malformed Origin headers must be rejected, not crash the handler.
+    let originHost: string | null = null;
+    try {
+      if (origin) originHost = new URL(origin).host;
+    } catch {
+      originHost = null;
+    }
+    if (!origin || originHost !== host) {
       return Response.json({ error: "Forbidden: bad origin" }, { status: 403 });
     }
   }

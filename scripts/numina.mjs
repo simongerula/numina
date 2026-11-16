@@ -19,7 +19,15 @@
 import { spawn, spawnSync } from "node:child_process";
 import { platform } from "node:os";
 import { fileURLToPath } from "node:url";
-import { mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
+import path from "node:path";
 
 // The project root is this script's parent directory, whatever the caller's cwd.
 // That also holds when the script is reached through a symlink (e.g. the global
@@ -99,7 +107,11 @@ function clearPidFile() {
 // already on PATH, so fall back to PNPM_HOME/bin for the "configured but
 // fresh-session" case, and give up with instructions otherwise.
 function globalBinDir() {
-  const probe = spawnSync("pnpm", ["bin", "-g"], { cwd: projectRoot, encoding: "utf8" });
+  const probe = spawnSync("pnpm", ["bin", "-g"], {
+    cwd: projectRoot,
+    encoding: "utf8",
+    shell: platform() === "win32", // pnpm is pnpm.cmd there; needs a shell to resolve
+  });
   if (probe.status === 0) {
     return probe.stdout.trim();
   }
@@ -131,16 +143,12 @@ function readPnpmHomeFromShellConfig() {
 }
 
 function runInstall() {
-  if (platform() === "win32") {
-    console.error(
-      "Windows support for the global link is limited (symlinks need developer mode); " +
-      "use `pnpm numina` from the project directory instead."
-    );
-    process.exit(1);
-  }
-
   console.log("1/3  Installing dependencies (pnpm install)…");
-  const install = spawnSync("pnpm", ["install"], { stdio: "inherit", cwd: projectRoot });
+  const install = spawnSync("pnpm", ["install"], {
+    stdio: "inherit",
+    cwd: projectRoot,
+    shell: platform() === "win32", // pnpm is pnpm.cmd there; needs a shell to resolve
+  });
   if (install.status !== 0) {
     console.error("pnpm install failed — stopping here.");
     process.exit(install.status ?? 1);
@@ -163,26 +171,48 @@ function runInstall() {
     process.exit(1);
   }
 
-  const linkPath = linkDir + "/numina";
-  let alreadyLinked = false;
-  try {
-    alreadyLinked = realpathSync(linkPath) === scriptPath;
-  } catch {}
-  if (alreadyLinked) {
-    console.log(`Already linked: ${linkPath} -> ${projectRoot}scripts/numina.mjs`);
-  } else {
+  if (platform() === "win32") {
+    // Windows: symlinks need Developer Mode or admin rights, so write a .cmd
+    // shim instead — the same approach npm and pnpm use for their own bins.
+    const shimPath = path.join(linkDir, "numina.cmd");
+    const shim = `@echo off\r\nnode "${path.join(projectRoot, "scripts", "numina.mjs")}" %*\r\n`;
+    try {
+      if (readFileSync(shimPath, "utf8") === shim) {
+        console.log(`Already linked: ${shimPath}`);
+        return;
+      }
+    } catch {}
     try {
       mkdirSync(linkDir, { recursive: true });
-      rmSync(linkPath, { force: true });
-      symlinkSync(scriptPath, linkPath);
-      console.log(`Linked ${linkPath} -> ${projectRoot}scripts/numina.mjs`);
+      writeFileSync(shimPath, shim);
+      console.log(`Linked ${shimPath} -> ${path.join(projectRoot, "scripts", "numina.mjs")}`);
     } catch (error) {
-      console.error(`Could not create the link (${error.message}).`);
+      console.error(`Could not write the shim (${error.message}).`);
       process.exit(1);
+    }
+  } else {
+    const linkPath = linkDir + "/numina";
+    let alreadyLinked = false;
+    try {
+      alreadyLinked = realpathSync(linkPath) === scriptPath;
+    } catch {}
+    if (alreadyLinked) {
+      console.log(`Already linked: ${linkPath} -> ${projectRoot}scripts/numina.mjs`);
+    } else {
+      try {
+        mkdirSync(linkDir, { recursive: true });
+        rmSync(linkPath, { force: true });
+        symlinkSync(scriptPath, linkPath);
+        console.log(`Linked ${linkPath} -> ${projectRoot}scripts/numina.mjs`);
+      } catch (error) {
+        console.error(`Could not create the link (${error.message}).`);
+        process.exit(1);
+      }
     }
   }
 
-  const onPath = (process.env.PATH ?? "").split(":").includes(linkDir);
+  const pathSeparator = platform() === "win32" ? ";" : ":";
+  const onPath = (process.env.PATH ?? "").split(pathSeparator).includes(linkDir);
   console.log("");
   console.log("Numina is installed.");
   console.log("Run `numina` from any directory to start it and open the browser tab.");
