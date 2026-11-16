@@ -52,8 +52,13 @@ telemetry. Financial data and privacy invariants take priority over convenience.
 - **Do not start the dev server or open the app to verify changes by default**
   (it costs tokens). Only run/browse the app when the user explicitly asks
   for it — when they do, use the existing scripts above.
-- Do not treat `AGENTS.md`/`PLAN.md`/`README.md`/`DATABASE.md` as stale
+- Do not treat `AGENTS.md`/`README.md`/`DATABASE.md` as stale
   boilerplate: if a change alters behavior documented there, update the docs
   in the same change.
-- When adding user-visible features, append to `releaseNotes.md`.
-
+- **Never execute git commands** — no `git add`/`commit`/`push`, no branch,
+  stash, or checkout operations, and no read-only `git` calls either. The
+  developer owns version control. If you need repo state, ask for it instead
+  of running `git status`/`log` yourself.
+- **End every coding task by asking for commit text.** Ask whether the
+  developer wants a commit message and/or a PR description, then provide it
+  as ready-to-copy text — never stage, commit, or push anything yourself.
