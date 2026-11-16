@@ -6,8 +6,7 @@ on:
     branches: [main]
 
 jobs:
-  lint:
-    name: Lint
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,21 +24,6 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-  typecheck:
-    name: Typecheck
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - run: pnpm install --frozen-lockfile
-
       # next-env.d.ts is gitignored, so generate the *.png module types
       # before typechecking.
       - name: Generate Next.js types
@@ -47,21 +31,6 @@ jobs:
 
       - name: Typecheck
         run: pnpm exec tsc --noEmit
-
-  tests:
-    name: Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - run: pnpm install --frozen-lockfile
 
       - name: Tests
         run: pnpm test
