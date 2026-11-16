@@ -30,6 +30,24 @@ Numbers you can check:
 - **A set-new-balance helper** - reconciled to a real statement number but don't know the movement? Enter the balance, Numina works out the adjustment.
 - **An expenses page** - months at a glance (saved from your ledger deposits, spent from budget entries), a donut of where the money went, and spreadsheet-style income / expense / other tables with your own categories.
 
+## Prerequisites
+
+One-time requirements before the install command will work:
+
+- **Node.js 20+** — Next.js 16 and better-sqlite3 13 both need a modern
+  runtime. If no prebuilt binary matches your Node version,
+  better-sqlite3 compiles from source, which on macOS requires the
+  Xcode Command Line Tools (`xcode-select --install`).
+- **pnpm** — the package manager this project is pinned to
+  (`packageManager` in `package.json`). If you have Node but not pnpm:
+  `corepack enable` or `npm i -g pnpm`. If you've never run `pnpm setup`,
+  step 3/3 of `numina install` will say so and tell you what to do.
+
+> **Heads up about the first install:** `pnpm numina install` *does* use
+> the network — that's the dependency download, and it's the only time.
+> After installation, the app makes zero network calls: the server is
+> bound to loopback and there is no outbound code path.
+
 ## How to use
 
 **One-time setup** — clone the repo, then from inside the project run:
