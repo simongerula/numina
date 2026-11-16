@@ -34,11 +34,11 @@ Numbers you can check:
 
 One-time requirements before the install command will work:
 
-- **Node.js 20+** — Next.js 16 and better-sqlite3 13 both need a modern
-  runtime. If no prebuilt binary matches your Node version,
-  better-sqlite3 compiles from source: on macOS that needs the Xcode
-  Command Line Tools (`xcode-select --install`); on Windows it needs
-  Visual Studio Build Tools.
+- **Node.js 22.13+** — the pinned pnpm 11 needs Node 22.13 or newer to run,
+  and Next.js 16 / better-sqlite3 13 both want a modern runtime. If no
+  prebuilt binary matches your Node version, better-sqlite3 compiles from
+  source: on macOS that needs the Xcode Command Line Tools
+  (`xcode-select --install`); on Windows it needs Visual Studio Build Tools.
 - **pnpm** — the package manager this project is pinned to
   (`packageManager` in `package.json`). If you have Node but not pnpm:
   `corepack enable` or `npm i -g pnpm`. If you've never run `pnpm setup`,

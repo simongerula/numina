@@ -1,0 +1,3 @@
+# Default: everything is owned by the maintainer.
+# Contributor PRs require a review from a code owner before merging.
+* @simongerula

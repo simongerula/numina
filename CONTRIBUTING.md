@@ -16,7 +16,7 @@ cd numina
 pnpm numina install   # deps + production build + global `numina` command
 ```
 
-Prerequisites: Node.js 20+ and pnpm (see the README for details). The app
+Prerequisites: Node.js 22.13+ and pnpm (see the README for details). The app
 creates its own SQLite database at `data/numina.db` on first run — **never
 commit or share that file**; it's real financial data.
 
