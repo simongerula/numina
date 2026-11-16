@@ -113,7 +113,6 @@ export function listMovements(opts: { limit?: number } = {}): Movement[] {
   return rows.map((r) => ({
     ...r,
     type: r.type as Movement["type"],
-    toString: undefined,
   }));
 }
 

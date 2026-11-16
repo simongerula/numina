@@ -95,7 +95,7 @@ To back up: copy the file. To start over: delete it.
 | Storage | SQLite via `better-sqlite3`, file at `data/numina.db` |
 | API | Next.js Route Handlers (`/api/accounts`, `/api/movements`, `/api/expenses/*`) |
 | Validation | Zod on every write |
-| Fonts | next/font, self-hosted at build time |
+| Fonts | Inter, vendored as woff2 (`next/font/local`) — no font downloads, ever |
 
 Design decisions that matter here:
 
