@@ -1,0 +1,43 @@
+name: Feature request
+description: Suggest an idea for Numina.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        :lock: Remember: never include real financial data in screenshots,
+        examples, or files attached to this issue.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or motivation
+      description: What are you trying to do, and what gets in the way today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should it look like / do? Mock-ups welcome (masked!).
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other ways you've tried or considered solving this.
+
+  - type: checkboxes
+    id: fit
+    attributes:
+      label: Project fit
+      description: |
+        Numina is local-first, single-user, no cloud, no login, no telemetry.
+        Proposals that need cloud services, accounts, or data syncing are
+        out of scope by design.
+      options:
+        - label: This idea fits the local-first, no-cloud, no-telemetry model
+          required: true

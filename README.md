@@ -129,6 +129,13 @@ Design decisions that matter here:
 | `pnpm start` | Serve the production build (loopback only) |
 | `pnpm lint` | ESLint |
 
+## Contributing
+
+Numina is open to contributors! See [CONTRIBUTING.md](CONTRIBUTING.md) for
+setup, the codebase rules, and how to open a pull request. Bug reports are
+welcome too — please use the issue templates and **never attach your real
+ledger file or unmasked screenshots**.
+
 ## License
 
 MIT
