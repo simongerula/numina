@@ -7,6 +7,7 @@ import type { Account, Movement } from "@/lib/types";
 import { formatDate, formatPeriod, formatMoney, centsFromInput } from "@/lib/format";
 import { currentPeriod } from "@/lib/series";
 import { useBalancesHidden } from "@/hooks/useBalancesHidden";
+import { useCurrency } from "@/hooks/useCurrency";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -45,6 +46,7 @@ export function Ledger({
 }) {
   const router = useRouter();
   const { hidden } = useBalancesHidden();
+  const { symbol } = useCurrency();
 
   // Hidden accounts keep their movements: they remain selectable for filters
   // and for editing old entries, but never for new ones.
@@ -393,7 +395,7 @@ export function Ledger({
                           m.amount_cents < 0 && "text-red-600"
                         )}
                       >
-                        {formatMoney(m.amount_cents, hidden)}
+                        {formatMoney(m.amount_cents, hidden, symbol)}
                       </EditableTd>
                       <EditableTd onEdit={() => startEdit(m)} className="max-w-48 truncate text-muted-foreground">
                         {m.note || "—"}
@@ -452,7 +454,7 @@ export function Ledger({
                 autoFocus
               />
               <p className="text-xs text-muted-foreground">
-                Current balance: {formatMoney(selectedAccount?.balance ?? 0, hidden)}
+                Current balance: {formatMoney(selectedAccount?.balance ?? 0, hidden, symbol)}
               </p>
             </div>
             <div className="flex justify-end gap-2">

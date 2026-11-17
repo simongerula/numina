@@ -2,6 +2,7 @@ import { BalanceChart } from "@/components/dashboard/balance-chart";
 import { BalancesTable } from "@/components/dashboard/balances-table";
 import { Ledger } from "@/components/dashboard/ledger";
 import { MonthlyChangeRow } from "@/components/dashboard/monthly-change-row";
+import { SettingsButton } from "@/components/dashboard/settings-button";
 import { listAccounts, listArchivedAccounts, listMovements } from "@/lib/db/queries";
 import numinaIcon from "./icon.png";
 import Link from "next/link";
@@ -31,17 +32,21 @@ export default function DashboardPage() {
             </p>
           </div>
         </div>
-        <Link
-          href="/expenses"
-          className="rounded-lg border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
-        >
-          Expenses
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/expenses"
+            className="rounded-lg border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
+          >
+            Expenses
+          </Link>
+          <SettingsButton />
+        </div>
       </header>
 
       {/* Definite row height on desktop so the chart card and accounts card match;
-          the accounts list inside scrolls when it overflows. */}
-      <div className="grid items-stretch gap-6 lg:grid-cols-3 lg:grid-rows-[400px]">
+          the accounts list inside scrolls when it overflows. The chart card
+          spans the first two columns; the table gets the (wider) third. */}
+      <div className="grid items-stretch gap-6 lg:grid-cols-[1fr_1fr_1.3fr] lg:grid-rows-[400px]">
         <div className="lg:col-span-2 lg:flex">
           <BalanceChart accounts={accounts} movements={movements} />
         </div>

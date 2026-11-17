@@ -4,6 +4,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { savingsByAccount } from "@/lib/expenses";
 import { formatMoney } from "@/lib/format";
 import { useBalancesHidden } from "@/hooks/useBalancesHidden";
+import { useCurrency } from "@/hooks/useCurrency";
 
 type SavingsDeposit = {
   period: string;
@@ -28,6 +29,7 @@ export function SavingsDonut({
   period: string;
 }) {
   const { hidden } = useBalancesHidden();
+  const { symbol } = useCurrency();
   const slices = savingsByAccount(deposits, period);
   const total = slices.reduce((sum, s) => sum + s.cents, 0);
 
@@ -70,7 +72,7 @@ export function SavingsDonut({
                       <span className="ml-auto text-xs text-muted-foreground">{pct}%</span>
                     </div>
                     <p className="mt-1 text-xs font-semibold tabular-nums">
-                      {formatMoney(slice.cents, hidden)}
+                      {formatMoney(slice.cents, hidden, symbol)}
                     </p>
                   </div>
                 );
@@ -85,7 +87,7 @@ export function SavingsDonut({
           <li key={s.accountId} className="flex items-center gap-1.5">
             <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: s.color }} />
             <span className="truncate">{s.name}</span>
-            <span className="ml-auto shrink-0 tabular-nums">{formatMoney(s.cents, hidden)}</span>
+            <span className="ml-auto shrink-0 tabular-nums">{formatMoney(s.cents, hidden, symbol)}</span>
           </li>
         ))}
       </ul>

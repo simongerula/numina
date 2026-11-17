@@ -7,6 +7,7 @@ import type { BudgetCategory, BudgetCategoryKind, BudgetEntry, BudgetEntryKind }
 import { centsFromInput, formatDate, formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useBalancesHidden } from "@/hooks/useBalancesHidden";
+import { useCurrency } from "@/hooks/useCurrency";
 import { Button } from "@/components/ui/button";
 import { CategoryManager } from "@/components/expenses/category-manager";
 
@@ -53,6 +54,7 @@ export function ExpensesTable({
 }) {
   const router = useRouter();
   const { hidden } = useBalancesHidden();
+  const { symbol } = useCurrency();
   const hasCategory = kind !== "income";
 
   const [catOpen, setCatOpen] = useState(false);
@@ -335,7 +337,7 @@ export function ExpensesTable({
                           kind !== "income" && "text-red-600"
                         )}
                       >
-                        {formatMoney(e.amount_cents, hidden)}
+                        {formatMoney(e.amount_cents, hidden, symbol)}
                       </EditableTd>
                       {hasCategory && (
                         <EditableTd onEdit={() => startEdit(e)} className="max-w-48 truncate text-muted-foreground">

@@ -5,6 +5,7 @@ import { formatMonthLabel } from "@/lib/expenses";
 import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useBalancesHidden } from "@/hooks/useBalancesHidden";
+import { useCurrency } from "@/hooks/useCurrency";
 
 /**
  * Selectable strip of months, newest first, each showing saved (deposits)
@@ -20,6 +21,7 @@ export function MonthStrip({
   onSelect: (period: string) => void;
 }) {
   const { hidden } = useBalancesHidden();
+  const { symbol } = useCurrency();
 
   if (months.length === 0) return null;
 
@@ -48,13 +50,13 @@ export function MonthStrip({
                 <span>
                   Saved{" "}
                   <span className={cn("font-medium", m.saved > 0 && "text-emerald-600")}>
-                    {formatMoney(m.saved, hidden)}
+                    {formatMoney(m.saved, hidden, symbol)}
                   </span>
                 </span>
                 <span>
                   Spent{" "}
                   <span className={cn("font-medium", m.spent > 0 && "text-red-600")}>
-                    {formatMoney(m.spent, hidden)}
+                    {formatMoney(m.spent, hidden, symbol)}
                   </span>
                 </span>
               </span>
