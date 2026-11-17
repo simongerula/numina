@@ -7,6 +7,7 @@ import { formatSignedMoney, formatMoney } from "@/lib/format";
 import { totalProfit } from "@/lib/series";
 import type { Account, Movement } from "@/lib/types";
 import { useBalancesHidden } from "@/hooks/useBalancesHidden";
+import { useCurrency } from "@/hooks/useCurrency";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -61,6 +62,7 @@ export function BalancesTable({
   movements: Movement[];
 }) {
   const { hidden, toggle } = useBalancesHidden();
+  const { symbol } = useCurrency();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [unarchiveOpen, setUnarchiveOpen] = useState(false);
   const [name, setName] = useState("");
@@ -157,7 +159,7 @@ export function BalancesTable({
                         <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: account.color }} />
                         <AccountName name={account.name} />
                         <span className="shrink-0 tabular-nums text-muted-foreground">
-                          {formatMoney(account.balance, hidden)}
+                          {formatMoney(account.balance, hidden, symbol)}
                         </span>
                       </span>
                       <Button
@@ -237,16 +239,14 @@ export function BalancesTable({
           <table className="w-full table-fixed text-sm">
             <colgroup>
               <col />
-              <col className="w-[28%]" />
-              <col className="w-[28%]" />
-              <col className="w-10" />
+              <col className="w-[32%]" />
+              <col className="w-[32%]" />
             </colgroup>
             <thead>
               <tr className="text-left text-muted-foreground">
                 <th className="sticky top-0 z-10 bg-card px-5 py-2 font-medium">Account</th>
-                <th className="sticky top-0 z-10 bg-card px-3 py-2 text-right font-medium">Balance</th>
-                <th className="sticky top-0 z-10 bg-card px-3 py-2 text-right font-medium">Profit</th>
-                <th className="sticky top-0 z-10 bg-card px-2 py-2" aria-label="Actions" />
+                <th className="sticky top-0 z-10 bg-card px-2 py-2 text-right font-medium">Balance</th>
+                <th className="sticky top-0 z-10 bg-card px-2 py-2 text-right font-medium">Profit</th>
               </tr>
             </thead>
             <tbody>
@@ -260,23 +260,21 @@ export function BalancesTable({
                         <AccountName name={account.name} />
                       </span>
                     </td>
-                    <td className="px-3 py-3 text-right font-medium tabular-nums">
-                      {formatMoney(account.balance, hidden)}
+                    <td className="px-2 py-3 text-right font-medium whitespace-nowrap tabular-nums transition-[padding-right] duration-200 group-hover:pr-9">
+                      {formatMoney(account.balance, hidden, symbol)}
                     </td>
                     <td
                       className={cn(
-                        "px-3 py-3 text-right font-medium tabular-nums",
+                        "relative px-2 py-3 text-right font-medium whitespace-nowrap tabular-nums transition-[padding-right] duration-200 group-hover:pr-9",
                         delta > 0 && "text-emerald-600",
                         delta < 0 && "text-red-600"
                       )}
                     >
-                      {formatSignedMoney(delta, hidden)}
-                    </td>
-                    <td className="px-2 py-3 text-right">
+                      {formatSignedMoney(delta, hidden, symbol)}
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 text-muted-foreground/50 opacity-0 transition-opacity hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+                        className="absolute top-1/2 right-1 h-7 w-7 -translate-y-1/2 translate-x-2 text-muted-foreground/50 opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100 hover:text-destructive focus-visible:translate-x-0 focus-visible:opacity-100 focus-visible:text-destructive disabled:pointer-events-none disabled:opacity-40"
                         onClick={() => setArchiveTarget(account)}
                         disabled={busyId !== null}
                         title={`Archive ${account.name}`}
@@ -298,24 +296,22 @@ export function BalancesTable({
         <table className="w-full table-fixed text-sm">
           <colgroup>
             <col />
-            <col className="w-[28%]" />
-            <col className="w-[28%]" />
-            <col className="w-10" />
+            <col className="w-[32%]" />
+            <col className="w-[32%]" />
           </colgroup>
           <tbody>
             <tr className="bg-muted font-semibold">
               <td className="px-5 py-3">TOTAL</td>
-              <td className="px-3 py-3 text-right tabular-nums">{formatMoney(totalBalance, hidden)}</td>
+              <td className="px-2 py-3 text-right whitespace-nowrap tabular-nums">{formatMoney(totalBalance, hidden, symbol)}</td>
               <td
                 className={cn(
-                  "px-3 py-3 text-right tabular-nums",
+                  "px-2 py-3 text-right whitespace-nowrap tabular-nums",
                   totalDelta > 0 && "text-emerald-600",
                   totalDelta < 0 && "text-red-600"
                 )}
               >
-                {formatSignedMoney(totalDelta, hidden)}
+                {formatSignedMoney(totalDelta, hidden, symbol)}
               </td>
-              <td />
             </tr>
           </tbody>
         </table>

@@ -4,6 +4,7 @@ import type { Account, Movement } from "@/lib/types";
 import { monthlyBalanceChanges } from "@/lib/series";
 import { formatSignedMoney } from "@/lib/format";
 import { useBalancesHidden } from "@/hooks/useBalancesHidden";
+import { useCurrency } from "@/hooks/useCurrency";
 import { cn } from "@/lib/utils";
 
 const MONTHS_TO_SHOW = 6;
@@ -20,6 +21,7 @@ export function MonthlyChangeRow({
   movements: Movement[];
 }) {
   const { hidden } = useBalancesHidden();
+  const { symbol } = useCurrency();
   const months = monthlyBalanceChanges(accounts, movements, MONTHS_TO_SHOW);
 
   return (
@@ -46,7 +48,7 @@ export function MonthlyChangeRow({
                 m.cents === 0 && "text-muted-foreground"
               )}
             >
-              {m.cents === 0 ? "—" : formatSignedMoney(m.cents, hidden)}
+              {m.cents === 0 ? "—" : formatSignedMoney(m.cents, hidden, symbol)}
             </p>
           </div>
         ))}

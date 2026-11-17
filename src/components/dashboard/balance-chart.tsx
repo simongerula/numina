@@ -13,6 +13,7 @@ import {
 import type { Account, Movement } from "@/lib/types";
 import { buildMonthlySeries, type ChartRange } from "@/lib/series";
 import { useBalancesHidden } from "@/hooks/useBalancesHidden";
+import { useCurrency } from "@/hooks/useCurrency";
 import { cn } from "@/lib/utils";
 
 const ranges: Array<{ id: ChartRange; label: string }> = [
@@ -25,9 +26,10 @@ const ranges: Array<{ id: ChartRange; label: string }> = [
 export function BalanceChart({ accounts, movements }: { accounts: Account[]; movements: Movement[] }) {
   const [range, setRange] = useState<ChartRange>("6m");
   const { hidden } = useBalancesHidden();
+  const { symbol } = useCurrency();
   const monthlyData = buildMonthlySeries(accounts, movements, range);
 
-  const tickFormatter = (v: number) => (hidden ? "•••" : `$${(v / 1000).toFixed(0)}k`);
+  const tickFormatter = (v: number) => (hidden ? "•••" : `${symbol}${(v / 1000).toFixed(0)}k`);
 
   return (
     <section className="flex flex-col rounded-xl border bg-card text-card-foreground shadow-sm lg:h-full lg:flex-1">
@@ -81,7 +83,7 @@ export function BalanceChart({ accounts, movements }: { accounts: Account[]; mov
                         <span className="ml-auto text-xs font-semibold">
                           {hidden
                             ? "••••"
-                            : `$${Number(entry.value).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+                            : `${symbol}${Number(entry.value).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
                         </span>
                       </div>
                     ))}

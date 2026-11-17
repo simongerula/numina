@@ -6,6 +6,7 @@ import { buildExpenseMonths, formatMonthLabel } from "@/lib/expenses";
 import { currentPeriod } from "@/lib/series";
 import { formatMoney } from "@/lib/format";
 import { useBalancesHidden } from "@/hooks/useBalancesHidden";
+import { useCurrency } from "@/hooks/useCurrency";
 import { MonthStrip } from "@/components/expenses/month-strip";
 import { SpendingChart, type SpendingChartMode } from "@/components/expenses/spending-chart";
 import { SavingsDonut } from "@/components/expenses/savings-donut";
@@ -45,6 +46,7 @@ export function ExpensesView({
   // The donut shows all time until a month is picked on the strip.
   const [chartMode, setChartMode] = useState<SpendingChartMode>("all");
   const { hidden } = useBalancesHidden();
+  const { symbol } = useCurrency();
 
   const months = buildExpenseMonths(deposits, entries);
   // Fall back to the current month if the selection no longer has activity.
@@ -72,14 +74,15 @@ export function ExpensesView({
         </div>
         <section className="flex flex-col rounded-xl border bg-card p-5 text-card-foreground shadow-sm">
           <div className="flex flex-1 flex-col justify-center gap-3">
-            <SummaryRow label="Income" cents={selected?.income ?? 0} hidden={hidden} />
-            <SummaryRow label="Savings" cents={selected?.saved ?? 0} hidden={hidden} tone="positive" />
-            <SummaryRow label="Spent" cents={selected?.spent ?? 0} hidden={hidden} tone="negative" />
+            <SummaryRow label="Income" cents={selected?.income ?? 0} hidden={hidden} symbol={symbol} />
+            <SummaryRow label="Savings" cents={selected?.saved ?? 0} hidden={hidden} symbol={symbol} tone="positive" />
+            <SummaryRow label="Spent" cents={selected?.spent ?? 0} hidden={hidden} symbol={symbol} tone="negative" />
             <div className="border-t pt-3">
               <SummaryRow
                 label="Left to spend"
                 cents={left}
                 hidden={hidden}
+                symbol={symbol}
                 tone={left >= 0 ? "positive" : "negative"}
                 strong
               />
@@ -125,12 +128,14 @@ function SummaryRow({
   label,
   cents,
   hidden,
+  symbol,
   tone,
   strong,
 }: {
   label: string;
   cents: number;
   hidden: boolean;
+  symbol: string;
   tone?: "positive" | "negative";
   strong?: boolean;
 }) {
@@ -147,7 +152,7 @@ function SummaryRow({
           tone === "negative" && cents > 0 && "text-red-600"
         )}
       >
-        {formatMoney(cents, hidden)}
+        {formatMoney(cents, hidden, symbol)}
       </span>
     </div>
   );

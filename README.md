@@ -27,6 +27,7 @@ Numbers you can check:
 - **Balances & profits at a glance** - all-time profit rolls up from adjustments, not vibes.
 - **An Excel-style editable ledger** - deposits, withdrawals, and adjustments as plain rows, editable right in the table.
 - **A hide-balances toggle** - one click blanks every amount on screen before you pass your laptop over.
+- **A display-currency setting** - a gear in the header lets you pick the symbol shown everywhere ($, €, £, …). Amounts stay stored as integer cents; the choice persists in your browser's localStorage.
 - **A set-new-balance helper** - reconciled to a real statement number but don't know the movement? Enter the balance, Numina works out the adjustment.
 - **An expenses page** - months at a glance (saved from your ledger deposits, spent from budget entries), a donut of where the money went, and spreadsheet-style income / expense / other tables with your own categories.
 

@@ -5,6 +5,7 @@ import type { BudgetEntry } from "@/lib/types";
 import { formatMonthLabel, spendingByCategory, type SpendingRange } from "@/lib/expenses";
 import { formatMoney } from "@/lib/format";
 import { useBalancesHidden } from "@/hooks/useBalancesHidden";
+import { useCurrency } from "@/hooks/useCurrency";
 import { cn } from "@/lib/utils";
 
 /** Which window the donut shows: all time, year to date, or the strip's month. */
@@ -28,6 +29,7 @@ export function SpendingChart({
   onModeChange: (mode: SpendingChartMode) => void;
 }) {
   const { hidden } = useBalancesHidden();
+  const { symbol } = useCurrency();
   const range: SpendingRange = mode === "month" ? (period as SpendingRange) : mode;
 
   const slices = spendingByCategory(entries, range);
@@ -102,7 +104,7 @@ export function SpendingChart({
                           <span className="ml-auto text-xs text-muted-foreground">{pct}%</span>
                         </div>
                         <p className="mt-1 text-xs font-semibold tabular-nums">
-                          {formatMoney(slice.cents, hidden)}
+                          {formatMoney(slice.cents, hidden, symbol)}
                         </p>
                       </div>
                     );
@@ -117,12 +119,12 @@ export function SpendingChart({
               <li key={s.categoryId} className="flex items-center gap-2 text-sm">
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: s.color }} />
                 <span className="truncate">{s.name}</span>
-                <span className="ml-auto shrink-0 tabular-nums">{formatMoney(s.cents, hidden)}</span>
+                <span className="ml-auto shrink-0 tabular-nums">{formatMoney(s.cents, hidden, symbol)}</span>
               </li>
             ))}
             <li className="flex items-center gap-2 border-t pt-1.5 text-sm font-semibold">
               <span className="ml-auto text-muted-foreground">Total</span>
-              <span className="tabular-nums">{formatMoney(total, hidden)}</span>
+              <span className="tabular-nums">{formatMoney(total, hidden, symbol)}</span>
             </li>
           </ul>
         </div>
