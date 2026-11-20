@@ -60,19 +60,24 @@ export function buildExpenseMonths(
 /** Donut chart window: all time (default), year to date, or one "YYYY-MM". */
 export type SpendingRange = "all" | "ytd" | `${number}-${number}`;
 
+/** True when a "YYYY-MM-DD" date falls inside the donut window. */
+function rangeFilter(range: SpendingRange): (date: string) => boolean {
+  if (range === "all") return () => true;
+  const now = new Date();
+  const current = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const yearStart = `${now.getFullYear()}-01`;
+  return (date) => {
+    const period = date.slice(0, 7);
+    return range === "ytd" ? period >= yearStart && period <= current : period === range;
+  };
+}
+
 /** Donut slice per category (expense + other) for the selected window, largest first. */
 export function spendingByCategory(
   entries: BudgetEntry[],
   range: SpendingRange
 ): Array<{ categoryId: string; name: string; color: string; cents: number }> {
-  const now = new Date();
-  const current = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const inRange = (date: string): boolean => {
-    if (range === "all") return true;
-    const period = date.slice(0, 7);
-    if (range === "ytd") return period >= `${now.getFullYear()}-01` && period <= current;
-    return period === range;
-  };
+  const inRange = rangeFilter(range);
 
   const slices = new Map<string, { categoryId: string; name: string; color: string; cents: number }>();
 
@@ -90,6 +95,39 @@ export function spendingByCategory(
   }
 
   return Array.from(slices.values()).sort((a, b) => b.cents - a.cents);
+}
+
+/** Income has no user-picked colors, so its slices cycle this fixed palette. */
+const INCOME_COLORS = [
+  "#4f46e5", "#10b981", "#f59e0b", "#8b5cf6", "#f97316", "#ec4899", "#06b6d4", "#84cc16",
+];
+
+/**
+ * Income entries carry no category (the description is free text), so the
+ * source is the entry's note. Empty notes fall under "Uncategorized"; notes
+ * are merged case-insensitively, and slices get a stable palette color after
+ * sorting largest first. Same window rules as `spendingByCategory`.
+ */
+export function incomeBySource(
+  entries: BudgetEntry[],
+  range: SpendingRange
+): Array<{ source: string; name: string; color: string; cents: number }> {
+  const inRange = rangeFilter(range);
+
+  const sources = new Map<string, { source: string; name: string; cents: number }>();
+
+  for (const e of entries) {
+    if (e.kind !== "income" || !inRange(e.date)) continue;
+    const name = e.note.trim() || "Uncategorized";
+    const key = name.toLowerCase();
+    const slice = sources.get(key) ?? { source: key, name, cents: 0 };
+    slice.cents += e.amount_cents;
+    sources.set(key, slice);
+  }
+
+  return Array.from(sources.values())
+    .sort((a, b) => b.cents - a.cents)
+    .map((s, i) => ({ ...s, color: INCOME_COLORS[i % INCOME_COLORS.length] }));
 }
 
 /**

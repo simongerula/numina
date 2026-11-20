@@ -135,6 +135,7 @@ financial data. CI runs lint, typecheck, and tests on every PR
 | Expenses-page savings | `SUM(amount_cents)` of **deposit** movements per month (only ledger → expenses link) |
 | Spent / income | `SUM(amount_cents)` of `budget_entries` per month, kind `expense`+`other` / kind `income` (`lib/expenses.ts`) |
 | Spending breakdown | `budget_entries` grouped by `category_id` for the selected month (`lib/expenses.ts`) |
+| Income breakdown | `budget_entries` of kind `income` grouped by trimmed description (note) for the selected month (`lib/expenses.ts`) |
 
 All derived charts/tables compute from movement/budget-entry rows; there are no
 persistent views to keep in sync.
