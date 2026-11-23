@@ -111,6 +111,46 @@ export const budgetEntryUpdateSchema = z.object({
   note: z.string().max(300).optional(),
 });
 
+// Savings goals
+
+/**
+ * One account feeding a goal, at an independent weight (percent of that
+ * account's balance). Weights are per-account caps — several may be 100%, and
+ * they need not sum to anything.
+ */
+const goalAllocation = z.object({
+  account_id: id,
+  weight: z.number().int().min(1, "weight must be 1–100").max(100, "weight must be 1–100"),
+});
+
+const goalAllocations = z
+  .array(goalAllocation)
+  .min(1, "select at least one account")
+  .refine(
+    (arr) => new Set(arr.map((a) => a.account_id)).size === arr.length,
+    "each account can be used once"
+  );
+
+/** The target is money, so it arrives as positive integer cents like every amount. */
+const positiveCents = centsInt.refine((n) => n > 0, "target must be positive");
+
+export const savingsGoalCreateSchema = z.object({
+  name: z.string().trim().min(1).max(60),
+  target: positiveCents,
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  sort_order: z.number().int().optional(),
+  allocations: goalAllocations,
+});
+
+export const savingsGoalUpdateSchema = z.object({
+  name: z.string().trim().min(1).max(60).optional(),
+  target: positiveCents.optional(),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  sort_order: z.number().int().min(0).max(9999).optional(),
+  /** Soft archive once saved for: completed goals move to the archived list. */
+  completed: z.boolean().optional(),
+});
+
 export type AccountCreate = z.infer<typeof accountCreateSchema>;
 export type AccountUpdate = z.infer<typeof accountUpdateSchema>;
 export type MovementCreate = z.infer<typeof movementCreateSchema>;
@@ -119,3 +159,5 @@ export type BudgetCategoryCreate = z.infer<typeof budgetCategoryCreateSchema>;
 export type BudgetCategoryUpdate = z.infer<typeof budgetCategoryUpdateSchema>;
 export type BudgetEntryCreate = z.infer<typeof budgetEntryCreateSchema>;
 export type BudgetEntryUpdate = z.infer<typeof budgetEntryUpdateSchema>;
+export type SavingsGoalCreate = z.infer<typeof savingsGoalCreateSchema>;
+export type SavingsGoalUpdate = z.infer<typeof savingsGoalUpdateSchema>;

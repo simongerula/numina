@@ -30,6 +30,7 @@ Numbers you can check:
 - **A display-currency setting** - a gear in the header lets you pick the symbol shown everywhere ($, €, £, …). Amounts stay stored as integer cents; the choice persists in your browser's localStorage.
 - **A set-new-balance helper** - reconciled to a real statement number but don't know the movement? Enter the balance, Numina works out the adjustment.
 - **An expenses page** - months at a glance (saved from your ledger deposits, spent from budget entries), a scrollable money-flow card with pagination dots (where the money went, and where it came from), and spreadsheet-style income / expense / other tables with your own categories.
+- **Savings goals** - set a target and fund it from one or more accounts, each at its own weight (100% of one, 20% of another). Cards show weighted progress and a rough time-to-goal from how much you've recently put in (deposits plus positive adjustments); edit a goal any time, complete it once it's fully funded (archived, and restorable), or delete it. Hide the card any time from the settings gear.
 
 ## Prerequisites
 

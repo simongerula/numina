@@ -66,6 +66,30 @@ export const SCHEMA_SQL = `
 
     CREATE INDEX IF NOT EXISTS idx_budget_entries_date ON budget_entries(date);
     CREATE INDEX IF NOT EXISTS idx_budget_entries_category ON budget_entries(category_id);
+
+    -- Savings goals: a target amount fed by one or more accounts, each at an
+    -- independent weight (e.g. account A 100%, account B 20%). Progress is
+    -- derived live from account balances. Completing a goal archives it (soft)
+    -- so it can be restored; accounts are never hard-deleted, only archived.
+    CREATE TABLE IF NOT EXISTS savings_goals (
+      id            TEXT PRIMARY KEY,
+      name          TEXT NOT NULL,
+      target_cents  INTEGER NOT NULL,          -- positive
+      color         TEXT NOT NULL,             -- hex, for the card accent
+      sort_order    INTEGER NOT NULL DEFAULT 0,
+      completed     INTEGER NOT NULL DEFAULT 0, -- soft archive
+      completed_at  TEXT,                       -- ISO when completed, else NULL
+      created_at    TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS savings_goal_accounts (
+      goal_id     TEXT NOT NULL REFERENCES savings_goals(id) ON DELETE CASCADE,
+      account_id  TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      weight      INTEGER NOT NULL,            -- percent of the account's balance, 1..100
+      PRIMARY KEY (goal_id, account_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_savings_goal_accounts_goal ON savings_goal_accounts(goal_id);
   `;
 
 function createDatabase(): Database.Database {

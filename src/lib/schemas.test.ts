@@ -3,6 +3,7 @@ import {
   accountCreateSchema,
   budgetEntryCreateSchema,
   movementCreateSchema,
+  savingsGoalCreateSchema,
 } from "./schemas";
 
 const baseMovement = {
@@ -140,5 +141,58 @@ describe("budgetEntryCreateSchema", () => {
         amount: 100,
       }).success
     ).toBe(true);
+  });
+});
+
+describe("savingsGoalCreateSchema", () => {
+  const accA = "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0";
+  const accB = "1a2b3c4d-5e6f-7081-92a3-b4c5d6e7f809";
+  const base = { name: "New car", target: 100_000, color: "#4f46e5" };
+
+  it("accepts weighted allocations", () => {
+    const parsed = savingsGoalCreateSchema.safeParse({
+      ...base,
+      allocations: [
+        { account_id: accA, weight: 100 },
+        { account_id: accB, weight: 20 },
+      ],
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("requires at least one account", () => {
+    expect(savingsGoalCreateSchema.safeParse({ ...base, allocations: [] }).success).toBe(false);
+  });
+
+  it("rejects duplicate accounts in one goal", () => {
+    const parsed = savingsGoalCreateSchema.safeParse({
+      ...base,
+      allocations: [
+        { account_id: accA, weight: 100 },
+        { account_id: accA, weight: 50 },
+      ],
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects weights outside 1–100", () => {
+    for (const weight of [0, 101, -5, 50.5]) {
+      const parsed = savingsGoalCreateSchema.safeParse({
+        ...base,
+        allocations: [{ account_id: accA, weight }],
+      });
+      expect(parsed.success, `${weight}`).toBe(false);
+    }
+  });
+
+  it("rejects a zero or negative target", () => {
+    for (const target of [0, -100]) {
+      const parsed = savingsGoalCreateSchema.safeParse({
+        ...base,
+        target,
+        allocations: [{ account_id: accA, weight: 100 }],
+      });
+      expect(parsed.success, `${target}`).toBe(false);
+    }
   });
 });

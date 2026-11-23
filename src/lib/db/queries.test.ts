@@ -33,12 +33,18 @@ import {
   createBudgetCategory,
   createBudgetEntry,
   createMovement,
+  createSavingsGoal,
   deleteMovement,
+  deleteSavingsGoal,
   listAccounts,
   listArchivedAccounts,
   listBudgetCategories,
+  listCompletedSavingsGoals,
+  listMonthlyInflowByAccount,
   listMovements,
+  listSavingsGoals,
   updateMovement,
+  updateSavingsGoal,
 } from "@/lib/db/queries";
 import type { BudgetEntryCreate, MovementCreate } from "@/lib/schemas";
 import { InputError } from "@/lib/server/guard";
@@ -119,6 +125,19 @@ describe("movements — signed integer cents", () => {
     expect(listAccounts().find((a) => a.id === id)?.balance).toBe(0);
     expect(() => deleteMovement(movementId)).toThrow(InputError);
   });
+
+  it("reports money in per account per month, ignoring withdrawals and negative adjustments", () => {
+    const id = accountId();
+    addMovement({ account_id: id, date: "2026-11-01", type: "deposit", amount: 5_000 });
+    addMovement({ account_id: id, date: "2026-11-02", type: "withdraw", amount: 2_000 });
+    addMovement({ account_id: id, date: "2026-11-03", type: "adjustment", amount: -500 });
+    addMovement({ account_id: id, date: "2026-11-04", type: "adjustment", amount: 300 });
+
+    const row = listMonthlyInflowByAccount().find(
+      (r) => r.account_id === id && r.period === "2026-11"
+    );
+    expect(row?.cents).toBe(5_300); // 5000 deposit + 300 positive adjustment
+  });
 });
 
 describe("budget entries", () => {
@@ -144,5 +163,126 @@ describe("budget entries", () => {
     const others = listBudgetCategories("other");
     expect(expenses.every((c) => c.kind === "expense")).toBe(true);
     expect(others.every((c) => c.kind === "other")).toBe(true);
+  });
+});
+
+describe("savings goals", () => {
+  it("creates a goal with weighted allocations and derives each account's balance", () => {
+    const a = accountId();
+    const b = accountId();
+    addMovement({ account_id: a, type: "deposit", amount: 50_000 });
+
+    const id = createSavingsGoal({
+      name: "New car",
+      target: 1_000_000,
+      color: "#4f46e5",
+      allocations: [
+        { account_id: a, weight: 100 },
+        { account_id: b, weight: 20 },
+      ],
+    });
+
+    const found = listSavingsGoals().find((g) => g.id === id);
+    expect(found?.name).toBe("New car");
+    expect(found?.completed).toBe(0);
+    expect(found?.allocations).toHaveLength(2);
+
+    const allocA = found?.allocations.find((x) => x.account_id === a);
+    expect(allocA?.weight).toBe(100);
+    expect(allocA?.balance_cents).toBe(50_000);
+  });
+
+  it("refuses unknown or archived accounts (and rolls the goal back)", () => {
+    const before = listSavingsGoals().length;
+
+    expect(() =>
+      createSavingsGoal({
+        name: "Bad",
+        target: 100,
+        color: "#4f46e5",
+        allocations: [
+          { account_id: "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0", weight: 100 },
+        ],
+      })
+    ).toThrow(InputError);
+    expect(listSavingsGoals().length).toBe(before);
+
+    const archived = accountId();
+    archiveAccount(archived);
+    expect(() =>
+      createSavingsGoal({
+        name: "Hidden",
+        target: 100,
+        color: "#10b981",
+        allocations: [{ account_id: archived, weight: 100 }],
+      })
+    ).toThrow(InputError);
+  });
+
+  it("refuses to complete a goal before it reaches its target", () => {
+    const account = accountId();
+    const id = createSavingsGoal({
+      name: "Almost there",
+      target: 10_000,
+      color: "#f97316",
+      allocations: [{ account_id: account, weight: 100 }],
+    });
+
+    // Nothing saved yet → cannot complete.
+    expect(() => updateSavingsGoal(id, { completed: true })).toThrow(InputError);
+
+    // Halfway → still cannot complete.
+    addMovement({ account_id: account, type: "deposit", amount: 5_000 });
+    expect(() => updateSavingsGoal(id, { completed: true })).toThrow(InputError);
+
+    // Fully funded → completes.
+    addMovement({ account_id: account, type: "deposit", amount: 5_000 });
+    expect(() => updateSavingsGoal(id, { completed: true })).not.toThrow();
+    expect(listCompletedSavingsGoals().find((g) => g.id === id)?.completed).toBe(1);
+  });
+
+  it("updates a goal's name, target, and color", () => {
+    const account = accountId();
+    const id = createSavingsGoal({
+      name: "Old name",
+      target: 1_000,
+      color: "#4f46e5",
+      allocations: [{ account_id: account, weight: 100 }],
+    });
+
+    updateSavingsGoal(id, { name: "New name", target: 2_500, color: "#10b981" });
+
+    const found = listSavingsGoals().find((g) => g.id === id);
+    expect(found?.name).toBe("New name");
+    expect(found?.target_cents).toBe(2_500);
+    expect(found?.color).toBe("#10b981");
+    // Allocations are untouched by a metadata edit.
+    expect(found?.allocations).toHaveLength(1);
+  });
+
+  it("completes (archives), restores, and permanently deletes", () => {
+    const account = accountId();
+    const id = createSavingsGoal({
+      name: "Trip",
+      target: 500_000,
+      color: "#10b981",
+      allocations: [{ account_id: account, weight: 100 }],
+    });
+    // Only funded goals may be completed (see the gate test above).
+    addMovement({ account_id: account, type: "deposit", amount: 500_000 });
+
+    updateSavingsGoal(id, { completed: true });
+    expect(listSavingsGoals().find((g) => g.id === id)).toBeUndefined();
+    const archived = listCompletedSavingsGoals().find((g) => g.id === id);
+    expect(archived?.completed).toBe(1);
+    expect(archived?.completed_at).not.toBeNull();
+
+    updateSavingsGoal(id, { completed: false });
+    expect(listSavingsGoals().find((g) => g.id === id)).toBeDefined();
+
+    deleteSavingsGoal(id);
+    expect(listSavingsGoals().find((g) => g.id === id)).toBeUndefined();
+    expect(() => updateSavingsGoal(id, { completed: true })).toThrow(InputError);
+    expect(() => deleteSavingsGoal(id)).toThrow(InputError);
   });
 });
