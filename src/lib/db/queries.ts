@@ -243,6 +243,29 @@ export function listDepositTotalsByMonthByAccount(): Array<{
   }>;
 }
 
+/**
+ * Money-in cents per month ("YYYY-MM") per account, across ALL history:
+ * deposits plus positive adjustments. Withdrawals and negative adjustments are
+ * ignored. Savings-goal pace uses this (not the deposit-only totals above) so
+ * accounts funded mainly by adjustments still count, without money leaving the
+ * accounts dragging the estimate down.
+ */
+export function listMonthlyInflowByAccount(): Array<{
+  period: string;
+  account_id: string;
+  cents: number;
+}> {
+  return getDb()
+    .prepare(
+      `SELECT strftime('%Y-%m', m.date) AS period, m.account_id,
+              SUM(CASE WHEN m.amount_cents > 0 THEN m.amount_cents ELSE 0 END) AS cents
+       FROM movements m
+       GROUP BY period, m.account_id
+       ORDER BY period DESC`
+    )
+    .all() as Array<{ period: string; account_id: string; cents: number }>;
+}
+
 // ---------------------------------------------------------------------------
 // Budget categories
 // ---------------------------------------------------------------------------

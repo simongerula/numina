@@ -8,7 +8,7 @@ import {
   listAccounts,
   listArchivedAccounts,
   listCompletedSavingsGoals,
-  listDepositTotalsByMonthByAccount,
+  listMonthlyInflowByAccount,
   listMovements,
   listSavingsGoals,
 } from "@/lib/db/queries";
@@ -23,8 +23,8 @@ export default function DashboardPage() {
   const movements = listMovements();
   const goals = listSavingsGoals();
   const completedGoals = listCompletedSavingsGoals();
-  // Deposit history feeds the goals' "time to reach" estimate.
-  const deposits = listDepositTotalsByMonthByAccount();
+  // Money-in history feeds the goals' "time to reach" estimate.
+  const monthlyInflow = listMonthlyInflowByAccount();
 
   return (
     <main className="mx-auto min-h-dvh max-w-6xl space-y-6 px-4 py-8">
@@ -69,7 +69,7 @@ export default function DashboardPage() {
         goals={goals}
         completedGoals={completedGoals}
         accounts={accounts}
-        deposits={deposits}
+        monthlyInflow={monthlyInflow}
       />
       <Ledger accounts={accounts} hiddenAccounts={hiddenAccounts} movements={movements} />
     </main>

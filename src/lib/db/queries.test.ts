@@ -40,6 +40,7 @@ import {
   listArchivedAccounts,
   listBudgetCategories,
   listCompletedSavingsGoals,
+  listMonthlyInflowByAccount,
   listMovements,
   listSavingsGoals,
   updateMovement,
@@ -123,6 +124,19 @@ describe("movements — signed integer cents", () => {
 
     expect(listAccounts().find((a) => a.id === id)?.balance).toBe(0);
     expect(() => deleteMovement(movementId)).toThrow(InputError);
+  });
+
+  it("reports money in per account per month, ignoring withdrawals and negative adjustments", () => {
+    const id = accountId();
+    addMovement({ account_id: id, date: "2026-11-01", type: "deposit", amount: 5_000 });
+    addMovement({ account_id: id, date: "2026-11-02", type: "withdraw", amount: 2_000 });
+    addMovement({ account_id: id, date: "2026-11-03", type: "adjustment", amount: -500 });
+    addMovement({ account_id: id, date: "2026-11-04", type: "adjustment", amount: 300 });
+
+    const row = listMonthlyInflowByAccount().find(
+      (r) => r.account_id === id && r.period === "2026-11"
+    );
+    expect(row?.cents).toBe(5_300); // 5000 deposit + 300 positive adjustment
   });
 });
 
@@ -225,6 +239,25 @@ describe("savings goals", () => {
     addMovement({ account_id: account, type: "deposit", amount: 5_000 });
     expect(() => updateSavingsGoal(id, { completed: true })).not.toThrow();
     expect(listCompletedSavingsGoals().find((g) => g.id === id)?.completed).toBe(1);
+  });
+
+  it("updates a goal's name, target, and color", () => {
+    const account = accountId();
+    const id = createSavingsGoal({
+      name: "Old name",
+      target: 1_000,
+      color: "#4f46e5",
+      allocations: [{ account_id: account, weight: 100 }],
+    });
+
+    updateSavingsGoal(id, { name: "New name", target: 2_500, color: "#10b981" });
+
+    const found = listSavingsGoals().find((g) => g.id === id);
+    expect(found?.name).toBe("New name");
+    expect(found?.target_cents).toBe(2_500);
+    expect(found?.color).toBe("#10b981");
+    // Allocations are untouched by a metadata edit.
+    expect(found?.allocations).toHaveLength(1);
   });
 
   it("completes (archives), restores, and permanently deletes", () => {

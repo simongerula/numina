@@ -2,14 +2,14 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArchiveRestore, Check, CheckCircle2, RotateCcw, Target, Trash2 } from "lucide-react";
+import { ArchiveRestore, Check, CheckCircle2, Pencil, RotateCcw, Target, Trash2 } from "lucide-react";
 import type { Account, SavingsGoal } from "@/lib/types";
 import {
   goalEtaMonths,
   goalProgress,
   goalRemainingCents,
   goalSavedCents,
-  type GoalDeposit,
+  type MonthlyInflow,
 } from "@/lib/goals";
 import { centsFromInput, formatDate, formatMoney } from "@/lib/format";
 import { useBalancesHidden } from "@/hooks/useBalancesHidden";
@@ -44,12 +44,12 @@ export function SavingsGoals({
   goals,
   completedGoals,
   accounts,
-  deposits,
+  monthlyInflow,
 }: {
   goals: SavingsGoal[];
   completedGoals: SavingsGoal[];
   accounts: Account[];
-  deposits: GoalDeposit[];
+  monthlyInflow: MonthlyInflow[];
 }) {
   const router = useRouter();
   const { visible } = useGoalsVisible();
@@ -58,6 +58,7 @@ export function SavingsGoals({
   const [deleteTarget, setDeleteTarget] = useState<SavingsGoal | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [editTarget, setEditTarget] = useState<SavingsGoal | null>(null);
   const [panel, setPanel] = useState(0);
   const trackRef = useRef<HTMLDivElement>(null);
 
@@ -236,8 +237,9 @@ export function SavingsGoals({
               >
                 <GoalCard
                   goal={goal}
-                  deposits={deposits}
+                  monthlyInflow={monthlyInflow}
                   onComplete={() => patchGoal(goal.id, { completed: true })}
+                  onEdit={() => setEditTarget(goal)}
                   onDelete={() => setDeleteTarget(goal)}
                   disabled={busyId !== null}
                 />
@@ -293,20 +295,39 @@ export function SavingsGoals({
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog
+        open={editTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditTarget(null);
+        }}
+      >
+        {editTarget && (
+          <EditGoalDialog
+            goal={editTarget}
+            onSaved={() => {
+              setEditTarget(null);
+              router.refresh();
+            }}
+          />
+        )}
+      </Dialog>
     </section>
   );
 }
 
 function GoalCard({
   goal,
-  deposits,
+  monthlyInflow,
   onComplete,
+  onEdit,
   onDelete,
   disabled,
 }: {
   goal: SavingsGoal;
-  deposits: GoalDeposit[];
+  monthlyInflow: MonthlyInflow[];
   onComplete: () => void;
+  onEdit: () => void;
   onDelete: () => void;
   disabled: boolean;
 }) {
@@ -316,7 +337,7 @@ function GoalCard({
   const saved = goalSavedCents(goal);
   const progress = goalProgress(goal);
   const remaining = goalRemainingCents(goal);
-  const months = goalEtaMonths(goal, deposits);
+  const months = goalEtaMonths(goal, monthlyInflow);
   const reached = remaining === 0;
 
   const eta =
@@ -341,6 +362,17 @@ function GoalCard({
           </h3>
         </div>
         <div className="-mt-1 -mr-1 flex shrink-0 items-center">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="text-muted-foreground/60 hover:text-foreground"
+            onClick={onEdit}
+            disabled={disabled}
+            title={`Edit ${goal.name}`}
+            aria-label={`Edit ${goal.name}`}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
           <Button
             variant="ghost"
             size="icon-sm"
@@ -391,7 +423,7 @@ function GoalCard({
           ) : eta ? (
             <span>{eta}</span>
           ) : (
-            <span className="italic">No recent deposits</span>
+            <span className="italic">No recent saving</span>
           )}
         </div>
       </div>
@@ -438,7 +470,11 @@ function NewGoalDialog({
     .map(([account_id, w]) => ({ account_id, weight: Number(w) }))
     .filter((a) => Number.isInteger(a.weight) && a.weight >= 1 && a.weight <= 100);
   const canSubmit =
-    !submitting && name.trim().length > 0 && targetCents !== null && allocations.length > 0;
+    !submitting &&
+    name.trim().length > 0 &&
+    targetCents !== null &&
+    targetCents > 0 &&
+    allocations.length > 0;
 
   const toggle = (accountId: string) =>
     setWeights((w) => {
@@ -503,22 +539,7 @@ function NewGoalDialog({
 
         <div className="space-y-2">
           <Label>Color</Label>
-          <div className="flex flex-wrap gap-2">
-            {PALETTE.map((c) => (
-              <button
-                type="button"
-                key={c}
-                aria-label={c}
-                aria-pressed={color === c}
-                onClick={() => setColor(c)}
-                className={cn(
-                  "h-7 w-7 rounded-full border-2 transition",
-                  color === c ? "border-foreground scale-110" : "border-transparent"
-                )}
-                style={{ backgroundColor: c }}
-              />
-            ))}
-          </div>
+          <ColorPicker value={color} onChange={setColor} />
         </div>
 
         <div className="space-y-2">
@@ -576,6 +597,101 @@ function NewGoalDialog({
 
         <Button type="submit" disabled={!canSubmit} className="w-full">
           {submitting ? "Creating..." : "Create goal"}
+        </Button>
+      </form>
+    </DialogContent>
+  );
+}
+
+/** Shared color swatches for the create and edit dialogs. */
+function ColorPicker({ value, onChange }: { value: string; onChange: (color: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {PALETTE.map((c) => (
+        <button
+          type="button"
+          key={c}
+          aria-label={c}
+          aria-pressed={value === c}
+          onClick={() => onChange(c)}
+          className={cn(
+            "h-7 w-7 rounded-full border-2 transition",
+            value === c ? "border-foreground scale-110" : "border-transparent"
+          )}
+          style={{ backgroundColor: c }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Edit an existing goal's name, target, or color. Account allocations are set
+ * at creation and intentionally not editable here (PATCH doesn't accept them).
+ */
+function EditGoalDialog({ goal, onSaved }: { goal: SavingsGoal; onSaved: () => void }) {
+  const [name, setName] = useState(goal.name);
+  const [target, setTarget] = useState((goal.target_cents / 100).toString());
+  const [color, setColor] = useState(goal.color);
+  const [submitting, setSubmitting] = useState(false);
+
+  const targetCents = centsFromInput(target);
+  const canSubmit =
+    !submitting && name.trim().length > 0 && targetCents !== null && targetCents > 0;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSubmit || targetCents === null) return;
+    setSubmitting(true);
+    const res = await fetch(`/api/goals/${goal.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name.trim(), target: targetCents, color }),
+    });
+    setSubmitting(false);
+    if (res.ok) onSaved();
+  };
+
+  return (
+    <DialogContent className="sm:max-w-sm">
+      <DialogHeader>
+        <DialogTitle>Edit goal</DialogTitle>
+        <DialogDescription>
+          Update the name, target, or color. The accounts and their weights stay as they are.
+        </DialogDescription>
+      </DialogHeader>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="edit-goal-name">Name</Label>
+          <Input
+            id="edit-goal-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={60}
+            autoFocus
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="edit-goal-target">Target amount</Label>
+          <Input
+            id="edit-goal-target"
+            inputMode="decimal"
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+            placeholder="0.00"
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Color</Label>
+          <ColorPicker value={color} onChange={setColor} />
+        </div>
+
+        <Button type="submit" disabled={!canSubmit} className="w-full">
+          {submitting ? "Saving..." : "Save changes"}
         </Button>
       </form>
     </DialogContent>

@@ -10,8 +10,12 @@ import { lastMonths } from "@/lib/expenses";
  * about progress is stored — it recomputes from the ledger every render.
  */
 
-/** A month's deposit total for one account (as returned by the ledger). */
-export interface GoalDeposit {
+/**
+ * A month's money-in total for one account: deposits plus positive
+ * adjustments (withdrawals and negative adjustments excluded).
+ * Shape matches `listMonthlyInflowByAccount` in queries.ts.
+ */
+export interface MonthlyInflow {
   period: string; // "YYYY-MM"
   account_id: string;
   cents: number;
@@ -37,41 +41,47 @@ export function goalRemainingCents(goal: SavingsGoal): number {
 }
 
 /**
- * Average monthly cents deposited into the goal's accounts over the last
- * `months` calendar months, each weighted by its allocation. Deposits only —
- * withdrawals and adjustments never count as saving. Returns 0 when there is
- * no deposit history to average.
+ * Average monthly money-in to the goal's accounts over the last `months`
+ * calendar months, each weighted by its allocation. Money in = deposits plus
+ * positive adjustments; withdrawals and negative adjustments are ignored, so
+ * the pace tracks how much you're putting in, not market swings or spending.
+ * Returns 0 when nothing came in over the window.
  */
-export function goalMonthlySavingsCents(
+export function goalMonthlyPaceCents(
   goal: SavingsGoal,
-  deposits: GoalDeposit[],
+  monthlyInflow: MonthlyInflow[],
   months = 6
 ): number {
   const periods = new Set(lastMonths(months));
-  const weightByAccount = new Map(goal.allocations.map((a) => [a.account_id, a.weight]));
+
+  // Money in per linked account over the window, then weighted like progress.
+  const inflowByAccount = new Map<string, number>();
+  for (const m of monthlyInflow) {
+    if (!periods.has(m.period)) continue;
+    inflowByAccount.set(m.account_id, (inflowByAccount.get(m.account_id) ?? 0) + m.cents);
+  }
 
   let total = 0;
-  for (const d of deposits) {
-    if (!periods.has(d.period)) continue;
-    const weight = weightByAccount.get(d.account_id);
-    if (weight === undefined) continue;
-    total += Math.round((d.cents * weight) / 100);
+  for (const a of goal.allocations) {
+    const inflow = inflowByAccount.get(a.account_id);
+    if (inflow === undefined) continue;
+    total += Math.round((inflow * a.weight) / 100);
   }
   return total / months;
 }
 
 /**
- * Estimated whole months to reach the target at the recent saving pace.
- * 0 when already there, null when the pace is zero or negative (unknown).
+ * Estimated whole months to reach the target at the recent money-in pace.
+ * 0 when already there, null when nothing is coming in (unknown).
  */
 export function goalEtaMonths(
   goal: SavingsGoal,
-  deposits: GoalDeposit[],
+  monthlyInflow: MonthlyInflow[],
   months = 6
 ): number | null {
   const remaining = goalRemainingCents(goal);
   if (remaining === 0) return 0;
-  const rate = goalMonthlySavingsCents(goal, deposits, months);
+  const rate = goalMonthlyPaceCents(goal, monthlyInflow, months);
   if (rate <= 0) return null;
   return Math.ceil(remaining / rate);
 }

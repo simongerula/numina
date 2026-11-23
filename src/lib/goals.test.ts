@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   goalEtaMonths,
-  goalMonthlySavingsCents,
+  goalMonthlyPaceCents,
   goalProgress,
   goalRemainingCents,
   goalSavedCents,
-  type GoalDeposit,
+  type MonthlyInflow,
 } from "./goals";
 import type { SavingsGoal, SavingsGoalAllocation } from "./types";
 
@@ -74,41 +74,41 @@ describe("goalProgress / goalRemainingCents", () => {
   });
 });
 
-describe("goalMonthlySavingsCents / goalEtaMonths", () => {
+describe("goalMonthlyPaceCents / goalEtaMonths", () => {
   const a = alloc({ account_id: "a", weight: 100 });
   const b = alloc({ account_id: "b", weight: 50 });
 
-  it("averages the last 6 months of weighted deposits, ignoring older ones", () => {
-    const deposits: GoalDeposit[] = [];
+  it("averages the last 6 months of weighted money in, ignoring older ones", () => {
+    const monthlyInflow: MonthlyInflow[] = [];
     for (let i = 0; i < 6; i++) {
-      deposits.push({ period: period(i), account_id: "a", cents: 1_000 });
+      monthlyInflow.push({ period: period(i), account_id: "a", cents: 1_000 });
     }
-    deposits.push({ period: period(7), account_id: "a", cents: 9_999 }); // ignored: too old
+    monthlyInflow.push({ period: period(7), account_id: "a", cents: 9_999 }); // ignored: too old
 
-    expect(goalMonthlySavingsCents(goal({ allocations: [a] }), deposits)).toBe(1_000);
+    expect(goalMonthlyPaceCents(goal({ allocations: [a] }), monthlyInflow)).toBe(1_000);
   });
 
-  it("applies each account's weight to its deposits", () => {
-    const deposits: GoalDeposit[] = [];
+  it("applies each account's weight to its money in", () => {
+    const monthlyInflow: MonthlyInflow[] = [];
     for (let i = 0; i < 6; i++) {
-      deposits.push({ period: period(i), account_id: "a", cents: 1_000 }); // 100%
-      deposits.push({ period: period(i), account_id: "b", cents: 1_000 }); // 50%
+      monthlyInflow.push({ period: period(i), account_id: "a", cents: 1_000 }); // 100%
+      monthlyInflow.push({ period: period(i), account_id: "b", cents: 1_000 }); // 50%
     }
     // (1000 + 500) × 6 / 6 = 1500 per month
-    expect(goalMonthlySavingsCents(goal({ allocations: [a, b] }), deposits)).toBe(1_500);
+    expect(goalMonthlyPaceCents(goal({ allocations: [a, b] }), monthlyInflow)).toBe(1_500);
   });
 
   it("estimates whole months to the target at the recent pace", () => {
-    const deposits: GoalDeposit[] = [];
+    const monthlyInflow: MonthlyInflow[] = [];
     for (let i = 0; i < 6; i++) {
-      deposits.push({ period: period(i), account_id: "a", cents: 1_000 });
+      monthlyInflow.push({ period: period(i), account_id: "a", cents: 1_000 });
     }
     // saved 70k, target 100k → 30k left at 1k/month = 30 months
     const g = goal({ allocations: [alloc({ account_id: "a", balance_cents: 70_000, weight: 100 })] });
-    expect(goalEtaMonths(g, deposits)).toBe(30);
+    expect(goalEtaMonths(g, monthlyInflow)).toBe(30);
   });
 
-  it("returns null when there is no saving pace, and 0 once the target is met", () => {
+  it("returns null when nothing is coming in, and 0 once the target is met", () => {
     const saved = goal({ allocations: [alloc({ account_id: "a", balance_cents: 10_000 })] });
     expect(goalEtaMonths(saved, [])).toBeNull();
 

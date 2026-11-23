@@ -174,7 +174,7 @@ financial data. CI runs lint, typecheck, and tests on every PR
 | Income breakdown | `budget_entries` of kind `income` grouped by trimmed description (note) for the selected month (`lib/expenses.ts`) |
 | Goal saved | Σ `round(account balance × weight / 100)` over a goal's linked accounts (`lib/goals.ts`) |
 | Goal progress | saved ÷ `target_cents`, clamped to 0..1 (`lib/goals.ts`) |
-| Goal time-to-target | `remaining ÷ (weighted deposits over the last 6 months ÷ 6)`; null when the pace is zero (`lib/goals.ts`) |
+| Goal time-to-target | `remaining ÷ (weighted money in over the last 6 months ÷ 6)`; money in = deposits + positive adjustments, withdrawals ignored (`lib/goals.ts`) |
 
 All derived charts/tables compute from movement/budget-entry rows (goals from
 account balances); there are no persistent views to keep in sync.
