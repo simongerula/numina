@@ -35,7 +35,7 @@ export function BalanceChart({ accounts, movements }: { accounts: Account[]; mov
     <section className="flex flex-col rounded-xl border bg-card text-card-foreground shadow-sm lg:h-full lg:flex-1">
       <header className="flex flex-col gap-3 px-5 pt-5 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-sm font-semibold uppercase tracking-wide">
-          Account performance over time
+          Balances over time
         </h2>
         <div className="flex rounded-lg bg-muted p-1">
           {ranges.map((r) => (

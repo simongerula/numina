@@ -97,3 +97,41 @@ export interface BudgetMonth {
   spent: number; // expense + other budget entries for the month
   income: number; // income budget entries for the month
 }
+
+// ---------------------------------------------------------------------------
+// Savings goals — a target amount fed by one or more accounts, each counted at
+// an independent weight (percent of that account's balance). Progress is
+// derived live from account balances; nothing about it is stored.
+// ---------------------------------------------------------------------------
+
+export interface SavingsGoalAllocation {
+  account_id: string;
+  account_name: string;
+  account_color: string;
+  account_archived: number; // 0/1 — the account may since have been hidden
+  weight: number; // percent of the account's balance, 1..100
+  balance_cents: number; // the account's current balance
+}
+
+export interface SavingsGoal {
+  id: string;
+  name: string;
+  target_cents: number; // positive
+  color: string; // hex, for the card accent
+  sort_order: number;
+  completed: number; // 0 active, 1 completed/archived (soft)
+  completed_at: string | null; // ISO when completed, else null
+  created_at: string;
+  allocations: SavingsGoalAllocation[];
+}
+
+export interface SavingsGoalRow {
+  id: string;
+  name: string;
+  target_cents: number;
+  color: string;
+  sort_order: number;
+  completed: number;
+  completed_at: string | null;
+  created_at: string;
+}

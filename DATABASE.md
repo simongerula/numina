@@ -6,11 +6,15 @@ is that one file** — back it up by copying it, start over by deleting it.
 ```
 accounts ────< movements            (the ledger: balances over time)
 budget_categories ────< budget_entries   (the expenses page)
+savings_goals ────< savings_goal_accounts >──── accounts   (goals: weighted balances)
 ```
 
 These are **two separate data domains**. The only bridge is *savings*, which
 is derived live from deposit movements — withdrawals and adjustments never
-appear on the expenses page.
+appear on the expenses page. Savings goals are a **third, purely derived**
+view: they store a target and a set of account weights, and their progress is
+recomputed from account balances on every read (nothing about progress is
+persisted).
 
 ---
 
@@ -90,6 +94,38 @@ defaults — expenses: Rent, Power, Gas, Water, Internet, Groceries; other:
 Coffee, Clothes, Tech, Fun. Seeding only fills an *empty* kind; user-created
 categories are never overwritten.
 
+Savings goals (same first-run migration). A goal is a target amount fed by
+one or more accounts, each counted at an **independent weight** (percent of
+that account's balance) — so `account A 100%` + `account B 20%` is valid and
+the weights need not sum to anything:
+
+```sql
+CREATE TABLE IF NOT EXISTS savings_goals (
+  id            TEXT PRIMARY KEY,
+  name          TEXT NOT NULL,
+  target_cents  INTEGER NOT NULL,          -- positive
+  color         TEXT NOT NULL,             -- hex, for the card accent
+  sort_order    INTEGER NOT NULL DEFAULT 0,
+  completed     INTEGER NOT NULL DEFAULT 0, -- soft archive
+  completed_at  TEXT,                       -- ISO when completed, else NULL
+  created_at    TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS savings_goal_accounts (
+  goal_id     TEXT NOT NULL REFERENCES savings_goals(id) ON DELETE CASCADE,
+  account_id  TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  weight      INTEGER NOT NULL,            -- percent of the account's balance, 1..100
+  PRIMARY KEY (goal_id, account_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_savings_goal_accounts_goal ON savings_goal_accounts(goal_id);
+```
+
+Goals are **completed** (soft-archived, restorable) rather than hard-deleted;
+deleting one for good removes its `savings_goal_accounts` rows via cascade.
+Accounts are only ever archived, so a goal keeps drawing on an account even
+after that account is hidden.
+
 Pragmas:
 
 ```sql
@@ -136,9 +172,12 @@ financial data. CI runs lint, typecheck, and tests on every PR
 | Spent / income | `SUM(amount_cents)` of `budget_entries` per month, kind `expense`+`other` / kind `income` (`lib/expenses.ts`) |
 | Spending breakdown | `budget_entries` grouped by `category_id` for the selected month (`lib/expenses.ts`) |
 | Income breakdown | `budget_entries` of kind `income` grouped by trimmed description (note) for the selected month (`lib/expenses.ts`) |
+| Goal saved | Σ `round(account balance × weight / 100)` over a goal's linked accounts (`lib/goals.ts`) |
+| Goal progress | saved ÷ `target_cents`, clamped to 0..1 (`lib/goals.ts`) |
+| Goal time-to-target | `remaining ÷ (weighted deposits over the last 6 months ÷ 6)`; null when the pace is zero (`lib/goals.ts`) |
 
-All derived charts/tables compute from movement/budget-entry rows; there are no
-persistent views to keep in sync.
+All derived charts/tables compute from movement/budget-entry rows (goals from
+account balances); there are no persistent views to keep in sync.
 
 ---
 

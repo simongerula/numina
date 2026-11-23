@@ -2,8 +2,16 @@ import { BalanceChart } from "@/components/dashboard/balance-chart";
 import { BalancesTable } from "@/components/dashboard/balances-table";
 import { Ledger } from "@/components/dashboard/ledger";
 import { MonthlyChangeRow } from "@/components/dashboard/monthly-change-row";
+import { SavingsGoals } from "@/components/dashboard/savings-goals";
 import { SettingsButton } from "@/components/dashboard/settings-button";
-import { listAccounts, listArchivedAccounts, listMovements } from "@/lib/db/queries";
+import {
+  listAccounts,
+  listArchivedAccounts,
+  listCompletedSavingsGoals,
+  listDepositTotalsByMonthByAccount,
+  listMovements,
+  listSavingsGoals,
+} from "@/lib/db/queries";
 import numinaIcon from "./icon.png";
 import Link from "next/link";
 
@@ -13,6 +21,10 @@ export default function DashboardPage() {
   const accounts = listAccounts();
   const hiddenAccounts = listArchivedAccounts();
   const movements = listMovements();
+  const goals = listSavingsGoals();
+  const completedGoals = listCompletedSavingsGoals();
+  // Deposit history feeds the goals' "time to reach" estimate.
+  const deposits = listDepositTotalsByMonthByAccount();
 
   return (
     <main className="mx-auto min-h-dvh max-w-6xl space-y-6 px-4 py-8">
@@ -53,6 +65,12 @@ export default function DashboardPage() {
         <BalancesTable accounts={accounts} hiddenAccounts={hiddenAccounts} movements={movements} />
       </div>
       <MonthlyChangeRow accounts={accounts} movements={movements} />
+      <SavingsGoals
+        goals={goals}
+        completedGoals={completedGoals}
+        accounts={accounts}
+        deposits={deposits}
+      />
       <Ledger accounts={accounts} hiddenAccounts={hiddenAccounts} movements={movements} />
     </main>
   );

@@ -1,5 +1,15 @@
 import { getDb } from "@/lib/db";
-import type { Account, AccountRow, BudgetCategory, BudgetCategoryRow, BudgetEntry, BudgetEntryRow, Movement } from "@/lib/types";
+import type {
+  Account,
+  AccountRow,
+  BudgetCategory,
+  BudgetCategoryRow,
+  BudgetEntry,
+  BudgetEntryRow,
+  Movement,
+  SavingsGoal,
+  SavingsGoalRow,
+} from "@/lib/types";
 import type {
   AccountCreate,
   AccountUpdate,
@@ -9,6 +19,8 @@ import type {
   BudgetEntryUpdate,
   MovementCreate,
   MovementUpdate,
+  SavingsGoalCreate,
+  SavingsGoalUpdate,
 } from "@/lib/schemas";
 import { InputError } from "@/lib/server/guard";
 
@@ -390,5 +402,182 @@ function validateEntryCategory(
     .get(categoryId, kind);
   if (!category) throw new InputError("Category not found");
   return categoryId;
+}
+
+// ---------------------------------------------------------------------------
+// Savings goals
+// ---------------------------------------------------------------------------
+
+/** Active goals with their account allocations and each account's balance. */
+export function listSavingsGoals(): SavingsGoal[] {
+  return savingsGoalRows(0);
+}
+
+/** Completed/archived goals, same shape as `listSavingsGoals`. */
+export function listCompletedSavingsGoals(): SavingsGoal[] {
+  return savingsGoalRows(1);
+}
+
+function savingsGoalRows(completed: 0 | 1): SavingsGoal[] {
+  const rows = getDb()
+    .prepare(
+      `SELECT g.id, g.name, g.target_cents, g.color, g.sort_order,
+              g.completed, g.completed_at, g.created_at,
+              ga.account_id, ga.weight,
+              a.name AS account_name, a.color AS account_color,
+              a.archived AS account_archived,
+              COALESCE(
+                (SELECT SUM(m.amount_cents) FROM movements m WHERE m.account_id = a.id), 0
+              ) AS balance_cents
+       FROM savings_goals g
+       LEFT JOIN savings_goal_accounts ga ON ga.goal_id = g.id
+       LEFT JOIN accounts a ON a.id = ga.account_id
+       WHERE g.completed = ?
+       ORDER BY g.sort_order, g.created_at`
+    )
+    .all(completed) as Array<{
+    id: string;
+    name: string;
+    target_cents: number;
+    color: string;
+    sort_order: number;
+    completed: number;
+    completed_at: string | null;
+    created_at: string;
+    account_id: string | null;
+    weight: number | null;
+    account_name: string | null;
+    account_color: string | null;
+    account_archived: number | null;
+    balance_cents: number | null;
+  }>;
+
+  // One row per allocation (LEFT JOIN), collapsed into goals in insertion order.
+  const byId = new Map<string, SavingsGoal>();
+  for (const r of rows) {
+    let goal = byId.get(r.id);
+    if (!goal) {
+      goal = {
+        id: r.id,
+        name: r.name,
+        target_cents: r.target_cents,
+        color: r.color,
+        sort_order: r.sort_order,
+        completed: r.completed,
+        completed_at: r.completed_at,
+        created_at: r.created_at,
+        allocations: [],
+      };
+      byId.set(r.id, goal);
+    }
+    if (r.account_id && r.account_name) {
+      goal.allocations.push({
+        account_id: r.account_id,
+        account_name: r.account_name,
+        account_color: r.account_color ?? "#94a3b8",
+        account_archived: r.account_archived ?? 0,
+        weight: r.weight ?? 100,
+        balance_cents: r.balance_cents ?? 0,
+      });
+    }
+  }
+  return Array.from(byId.values());
+}
+
+export function createSavingsGoal(data: SavingsGoalCreate): string {
+  const db = getDb();
+  const sortOrder =
+    data.sort_order ??
+    (
+      db.prepare(`SELECT COALESCE(MAX(sort_order), -1) + 1 AS next FROM savings_goals`).get() as {
+        next: number;
+      }
+    ).next;
+
+  const id = crypto.randomUUID();
+  const run = db.transaction(() => {
+    db.prepare(
+      `INSERT INTO savings_goals (id, name, target_cents, color, sort_order, completed, created_at)
+       VALUES (?, ?, ?, ?, ?, 0, ?)`
+    ).run(id, data.name.trim(), data.target, data.color, sortOrder, new Date().toISOString());
+
+    const insertAllocation = db.prepare(
+      `INSERT INTO savings_goal_accounts (goal_id, account_id, weight) VALUES (?, ?, ?)`
+    );
+    for (const allocation of data.allocations) {
+      assertActiveAccount(db, allocation.account_id);
+      insertAllocation.run(id, allocation.account_id, allocation.weight);
+    }
+  });
+  run();
+
+  return id;
+}
+
+export function updateSavingsGoal(id: string, data: SavingsGoalUpdate): void {
+  const db = getDb();
+  const current = db.prepare(`SELECT * FROM savings_goals WHERE id = ?`).get(id) as
+    | SavingsGoalRow
+    | undefined;
+  if (!current) throw new InputError("Goal not found");
+
+  const target = data.target ?? current.target_cents;
+
+  // Completing is only allowed once the goal is funded: mirrors the UI gate
+  // (and lib/goals.ts `goalSavedCents`) so the rule holds on the write path too.
+  if (data.completed === true && current.completed === 0 && savedCentsForGoal(db, id) < target) {
+    throw new InputError("Goal hasn't reached its target yet");
+  }
+
+  const completed = data.completed === undefined ? current.completed : data.completed ? 1 : 0;
+  // Stamp completion once; clearing it when restored (or left untouched).
+  const completedAt =
+    data.completed === undefined
+      ? current.completed_at
+      : data.completed
+        ? (current.completed_at ?? new Date().toISOString())
+        : null;
+
+  db.prepare(
+    `UPDATE savings_goals
+     SET name = ?, target_cents = ?, color = ?, sort_order = ?, completed = ?, completed_at = ?
+     WHERE id = ?`
+  ).run(
+    data.name?.trim() ?? current.name,
+    target,
+    data.color ?? current.color,
+    data.sort_order ?? current.sort_order,
+    completed,
+    completedAt,
+    id
+  );
+}
+
+/** Permanent removal: goals carry no history, so their allocations cascade away. */
+export function deleteSavingsGoal(id: string): void {
+  const result = getDb().prepare(`DELETE FROM savings_goals WHERE id = ?`).run(id);
+  if (result.changes === 0) throw new InputError("Goal not found");
+}
+
+/** Goals may only draw from active accounts; archived money is not re-goaled. */
+function assertActiveAccount(db: ReturnType<typeof getDb>, accountId: string): void {
+  const account = db.prepare(`SELECT id FROM accounts WHERE id = ? AND archived = 0`).get(accountId);
+  if (!account) throw new InputError("Account not found");
+}
+
+/** Weighted saved cents for a goal — mirrors lib/goals.ts `goalSavedCents`. */
+function savedCentsForGoal(db: ReturnType<typeof getDb>, goalId: string): number {
+  const rows = db
+    .prepare(
+      `SELECT ga.weight,
+              COALESCE(
+                (SELECT SUM(m.amount_cents) FROM movements m WHERE m.account_id = ga.account_id), 0
+              ) AS balance_cents
+       FROM savings_goal_accounts ga
+       WHERE ga.goal_id = ?`
+    )
+    .all(goalId) as Array<{ weight: number; balance_cents: number }>;
+
+  return rows.reduce((sum, r) => sum + Math.round((r.balance_cents * r.weight) / 100), 0);
 }
 

@@ -28,10 +28,10 @@ export function MonthlyChangeRow({
     <section className="rounded-xl border bg-card text-card-foreground shadow-sm">
       <header className="border-b px-5 py-4">
         <h2 className="text-sm font-semibold uppercase tracking-wide">
-          Monthly balance change
+          Balance change by month
         </h2>
         <p className="text-xs text-muted-foreground">
-          Net change across active accounts, last six months
+          Net change across your accounts, last six months
         </p>
       </header>
       <div className="grid grid-cols-3 divide-x divide-border sm:grid-cols-6">
