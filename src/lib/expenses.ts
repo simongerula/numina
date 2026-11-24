@@ -57,6 +57,17 @@ export function buildExpenseMonths(
   return periods.map((p) => months.get(p) as BudgetMonth);
 }
 
+/**
+ * Spent as shown on the month strip: the month's spent plus any positive
+ * "left to spend" (income − saved − spent), so an under-budget month reads as
+ * though the leftover was spent. Only the strip uses this; the summary card
+ * and the tables keep showing the real spent figure.
+ */
+export function monthStripSpent(month: BudgetMonth): number {
+  const left = month.income - month.saved - month.spent;
+  return month.spent + Math.max(left, 0);
+}
+
 /** Donut chart window: all time (default), year to date, or one "YYYY-MM". */
 export type SpendingRange = "all" | "ytd" | `${number}-${number}`;
 
@@ -70,6 +81,42 @@ function rangeFilter(range: SpendingRange): (date: string) => boolean {
     const period = date.slice(0, 7);
     return range === "ytd" ? period >= yearStart && period <= current : period === range;
   };
+}
+
+/**
+ * Positive per-month leftover (income − saved − spent) summed over a window:
+ * the money that came in but was neither saved nor spent, so the donut can
+ * surface it as an "Untracked" slice. Each month is clamped to zero before
+ * summing, so an over-budget month never cancels another month's leftover —
+ * matching the strip, where only a positive left-to-spend is folded in.
+ */
+export function untrackedCents(
+  deposits: Array<{ period: string; cents: number }>,
+  entries: BudgetEntry[],
+  range: SpendingRange
+): number {
+  const inRange = rangeFilter(range);
+
+  const months = new Map<string, { saved: number; spent: number; income: number }>();
+  const get = (period: string) => {
+    const m = months.get(period) ?? { saved: 0, spent: 0, income: 0 };
+    months.set(period, m);
+    return m;
+  };
+
+  for (const d of deposits) get(d.period).saved += d.cents;
+  for (const e of entries) {
+    const m = get(e.date.slice(0, 7));
+    if (e.kind === "income") m.income += e.amount_cents;
+    else m.spent += e.amount_cents;
+  }
+
+  let total = 0;
+  for (const [period, m] of months) {
+    if (!inRange(`${period}-01`)) continue;
+    total += Math.max(m.income - m.saved - m.spent, 0);
+  }
+  return total;
 }
 
 /** Donut slice per category (expense + other) for the selected window, largest first. */

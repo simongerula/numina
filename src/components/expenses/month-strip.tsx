@@ -1,7 +1,7 @@
 "use client";
 
 import type { BudgetMonth } from "@/lib/types";
-import { formatMonthLabel } from "@/lib/expenses";
+import { formatMonthLabel, monthStripSpent } from "@/lib/expenses";
 import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useBalancesHidden } from "@/hooks/useBalancesHidden";
@@ -9,7 +9,8 @@ import { useCurrency } from "@/hooks/useCurrency";
 
 /**
  * Selectable strip of months, newest first, each showing saved (deposits)
- * and spent (expenses + other) for the month.
+ * and spent for the month. Spent folds in any positive "left to spend"
+ * (see `monthStripSpent`); the summary card and tables show the real figure.
  */
 export function MonthStrip({
   months,
@@ -31,6 +32,7 @@ export function MonthStrip({
       <div className="flex gap-2 overflow-x-auto pb-1">
         {months.map((m) => {
           const active = m.period === selected;
+          const spent = monthStripSpent(m);
           return (
             <button
               key={m.period}
@@ -55,8 +57,8 @@ export function MonthStrip({
                 </span>
                 <span>
                   Spent{" "}
-                  <span className={cn("font-medium", m.spent > 0 && "text-red-600")}>
-                    {formatMoney(m.spent, hidden, symbol)}
+                  <span className={cn("font-medium", spent > 0 && "text-red-600")}>
+                    {formatMoney(spent, hidden, symbol)}
                   </span>
                 </span>
               </span>

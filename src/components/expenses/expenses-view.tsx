@@ -70,7 +70,13 @@ export function ExpensesView({
 
       <div className="grid items-stretch gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 lg:flex">
-          <SpendingChart entries={entries} period={selectedPeriod} mode={chartMode} onModeChange={setChartMode} />
+          <SpendingChart
+            deposits={deposits}
+            entries={entries}
+            period={selectedPeriod}
+            mode={chartMode}
+            onModeChange={setChartMode}
+          />
         </div>
         <section className="flex flex-col rounded-xl border bg-card p-5 text-card-foreground shadow-sm">
           <div className="flex flex-1 flex-col justify-center gap-3">

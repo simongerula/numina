@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import type { BudgetEntry } from "@/lib/types";
-import { formatMonthLabel, incomeBySource, spendingByCategory, type SpendingRange } from "@/lib/expenses";
+import { formatMonthLabel, incomeBySource, spendingByCategory, untrackedCents, type SpendingRange } from "@/lib/expenses";
 import { formatMoney } from "@/lib/format";
 import { useBalancesHidden } from "@/hooks/useBalancesHidden";
 import { useCurrency } from "@/hooks/useCurrency";
@@ -17,20 +17,26 @@ export type SpendingChartMode = "all" | "ytd" | "month";
 /** One donut/legend slice, whichever direction the money moved. */
 type Slice = { id: string; name: string; color: string; cents: number };
 
+/** Gray for the "Untracked" slice: money in that was neither saved nor spent. */
+const UNTRACKED_COLOR = "#9ca3af";
+
 /**
  * Money flow for the selected window, as a horizontally scrollable card: one
  * panel for where the money went (one donut slice per category, expense +
- * other entries) and one for where the money came from (income entries, one
- * slice per description). Both panels share the all time / year to date pills;
- * a specific month comes from the month strip above (selecting a month
- * switches both panels to it).
+ * other entries, plus an "Untracked" slice for positive leftover that was
+ * neither saved nor spent) and one for where the money came from (income
+ * entries, one slice per description). Both panels share the all time / year
+ * to date pills; a specific month comes from the month strip above (selecting a
+ * month switches both panels to it).
  */
 export function SpendingChart({
+  deposits,
   entries,
   period,
   mode,
   onModeChange,
 }: {
+  deposits: Array<{ period: string; cents: number }>;
   entries: BudgetEntry[];
   period: string;
   mode: SpendingChartMode;
@@ -40,6 +46,18 @@ export function SpendingChart({
   const trackRef = useRef<HTMLDivElement>(null);
 
   const range: SpendingRange = mode === "month" ? (period as SpendingRange) : mode;
+
+  // Categories first, then fold in the window's positive leftover as its own
+  // slice, ranked with the rest by size. Savings stay out: this donut is where
+  // spent money went plus what was left untracked.
+  const spendingSlices = spendingByCategory(entries, range).map(
+    (s): Slice => ({ id: s.categoryId, name: s.name, color: s.color, cents: s.cents })
+  );
+  const untracked = untrackedCents(deposits, entries, range);
+  if (untracked > 0) {
+    spendingSlices.push({ id: "untracked", name: "Untracked", color: UNTRACKED_COLOR, cents: untracked });
+    spendingSlices.sort((a, b) => b.cents - a.cents);
+  }
 
   const emptyText = (noun: string) =>
     mode === "all"
@@ -51,9 +69,7 @@ export function SpendingChart({
   const panels = [
     {
       title: "Where the money went",
-      slices: spendingByCategory(entries, range).map(
-        (s): Slice => ({ id: s.categoryId, name: s.name, color: s.color, cents: s.cents })
-      ),
+      slices: spendingSlices,
       empty: emptyText("spending"),
     },
     {
