@@ -111,6 +111,24 @@ export const budgetEntryUpdateSchema = z.object({
   note: z.string().max(300).optional(),
 });
 
+/**
+ * Sub-incomes hang off an income entry: a date, a free-text description, and a
+ * positive amount (in cents). They carry no category/kind of their own.
+ */
+export const budgetEntryItemCreateSchema = z
+  .object({
+    date: dateStr,
+    amount: centsInt,
+    note: z.string().max(300).optional().default(""),
+  })
+  .refine((v) => v.amount > 0, "amount must be positive");
+
+export const budgetEntryItemUpdateSchema = z.object({
+  date: dateStr.optional(),
+  amount: centsInt.optional(),
+  note: z.string().max(300).optional(),
+});
+
 // Savings goals
 
 /**
@@ -159,5 +177,7 @@ export type BudgetCategoryCreate = z.infer<typeof budgetCategoryCreateSchema>;
 export type BudgetCategoryUpdate = z.infer<typeof budgetCategoryUpdateSchema>;
 export type BudgetEntryCreate = z.infer<typeof budgetEntryCreateSchema>;
 export type BudgetEntryUpdate = z.infer<typeof budgetEntryUpdateSchema>;
+export type BudgetEntryItemCreate = z.infer<typeof budgetEntryItemCreateSchema>;
+export type BudgetEntryItemUpdate = z.infer<typeof budgetEntryItemUpdateSchema>;
 export type SavingsGoalCreate = z.infer<typeof savingsGoalCreateSchema>;
 export type SavingsGoalUpdate = z.infer<typeof savingsGoalUpdateSchema>;

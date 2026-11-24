@@ -16,6 +16,24 @@ export function formatMonthLabel(period: string, withYear = false): string {
   return withYear ? `${name} '${period.slice(2, 4)}` : name;
 }
 
+/**
+ * A line's displayed cents. Income lines sum their own "default" amount with
+ * every sub-income; expense/other entries have no sub-incomes, so this is just
+ * their amount. Charts and the tables both go through here, which is why
+ * sub-incomes roll into their parent instead of showing up as their own slice.
+ */
+export function entryTotalCents(e: BudgetEntry): number {
+  return e.items.reduce((sum, item) => sum + item.amount_cents, e.amount_cents);
+}
+
+/**
+ * A line's displayed date. An income line is dated to the most recent of its
+ * own date and its sub-incomes; with no sub-incomes it keeps its own date.
+ */
+export function entryDisplayDate(e: BudgetEntry): string {
+  return e.items.reduce((latest, item) => (item.date > latest ? item.date : latest), e.date);
+}
+
 /** The last `count` calendar periods ("YYYY-MM"), newest first. */
 export function lastMonths(count: number, now = new Date()): string[] {
   const out: string[] = [];
@@ -48,9 +66,11 @@ export function buildExpenseMonths(
   }
 
   for (const e of entries) {
-    const m = months.get(e.date.slice(0, 7));
+    // Income lines aggregate under their latest sub-income (their displayed
+    // date), and at their full default + sub-incomes total.
+    const m = months.get((e.kind === "income" ? entryDisplayDate(e) : e.date).slice(0, 7));
     if (!m) continue;
-    if (e.kind === "income") m.income += e.amount_cents;
+    if (e.kind === "income") m.income += entryTotalCents(e);
     else m.spent += e.amount_cents;
   }
 
@@ -106,8 +126,8 @@ export function untrackedCents(
 
   for (const d of deposits) get(d.period).saved += d.cents;
   for (const e of entries) {
-    const m = get(e.date.slice(0, 7));
-    if (e.kind === "income") m.income += e.amount_cents;
+    const m = get((e.kind === "income" ? entryDisplayDate(e) : e.date).slice(0, 7));
+    if (e.kind === "income") m.income += entryTotalCents(e);
     else m.spent += e.amount_cents;
   }
 
@@ -164,11 +184,12 @@ export function incomeBySource(
   const sources = new Map<string, { source: string; name: string; cents: number }>();
 
   for (const e of entries) {
-    if (e.kind !== "income" || !inRange(e.date)) continue;
+    if (e.kind !== "income" || !inRange(entryDisplayDate(e))) continue;
     const name = e.note.trim() || "Uncategorized";
     const key = name.toLowerCase();
     const slice = sources.get(key) ?? { source: key, name, cents: 0 };
-    slice.cents += e.amount_cents;
+    // Sub-incomes are not their own source: they add to the parent's slice.
+    slice.cents += entryTotalCents(e);
     sources.set(key, slice);
   }
 

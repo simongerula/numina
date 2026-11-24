@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { incomeBySource, monthStripSpent, spendingByCategory, untrackedCents } from "./expenses";
-import type { BudgetEntry, BudgetMonth } from "./types";
+import {
+  buildExpenseMonths,
+  entryDisplayDate,
+  entryTotalCents,
+  incomeBySource,
+  monthStripSpent,
+  spendingByCategory,
+  untrackedCents,
+} from "./expenses";
+import type { BudgetEntry, BudgetEntryItem, BudgetMonth } from "./types";
 
 const now = new Date();
 const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-05`;
@@ -18,9 +26,44 @@ function entry(overrides: Partial<BudgetEntry>): BudgetEntry {
     date: thisMonth,
     amount_cents: 1000,
     note: "",
+    items: [],
     ...overrides,
   };
 }
+
+function item(overrides: Partial<BudgetEntryItem> = {}): BudgetEntryItem {
+  return {
+    id: `item-${++seq}`,
+    entry_id: "entry-parent",
+    date: thisMonth,
+    note: "sold shoes",
+    amount_cents: 500,
+    ...overrides,
+  };
+}
+
+describe("entryTotalCents / entryDisplayDate", () => {
+  it("adds sub-incomes to the entry's own default amount", () => {
+    const e = entry({ amount_cents: 1000, items: [item({ amount_cents: 300 }), item({ amount_cents: 200 })] });
+    expect(entryTotalCents(e)).toBe(1500);
+  });
+
+  it("dates a line to the most recent of its own date and its sub-incomes", () => {
+    const e = entry({ date: "2026-11-01", items: [item({ date: "2026-11-20" }), item({ date: "2026-12-02" })] });
+    expect(entryDisplayDate(e)).toBe("2026-12-02");
+  });
+
+  it("keeps the entry's own date when a sub-income is older (never moves backwards)", () => {
+    const e = entry({ date: "2026-11-15", items: [item({ date: "2026-10-01" })] });
+    expect(entryDisplayDate(e)).toBe("2026-11-15");
+  });
+
+  it("is a no-op for entries without sub-incomes", () => {
+    const e = entry({ amount_cents: 250, date: "2026-11-09" });
+    expect(entryTotalCents(e)).toBe(250);
+    expect(entryDisplayDate(e)).toBe("2026-11-09");
+  });
+});
 
 describe("monthStripSpent", () => {
   function month(overrides: Partial<BudgetMonth>): BudgetMonth {
@@ -38,6 +81,30 @@ describe("monthStripSpent", () => {
 
   it("keeps spent unchanged when over budget", () => {
     expect(monthStripSpent(month({ income: 10000, saved: 6000, spent: 5000 }))).toBe(5000);
+  });
+});
+
+describe("buildExpenseMonths", () => {
+  it("aggregates an income line under its latest sub-income, at default + subs", () => {
+    const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevPeriod = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}`;
+
+    const parent = entry({
+      date: `${prevPeriod}-02`,
+      amount_cents: 1000,
+      items: [item({ date: `${period}-03`, amount_cents: 500 })],
+    });
+    const spent = entry({ kind: "expense", date: `${period}-04`, amount_cents: 200, category_id: "c1" });
+
+    const months = buildExpenseMonths([], [parent, spent]);
+    const current = months.find((m) => m.period === period);
+    const previous = months.find((m) => m.period === prevPeriod);
+
+    // The whole line (default + sub) lands in the latest sub-income month.
+    expect(current?.income).toBe(1500);
+    expect(previous?.income).toBe(0);
+    expect(current?.spent).toBe(200);
   });
 });
 
@@ -111,6 +178,33 @@ describe("incomeBySource", () => {
     );
 
     expect(slices.map((s) => s.color)).toEqual(["#4f46e5", "#10b981"]);
+  });
+
+  it("rolls sub-incomes into the parent source instead of listing them separately", () => {
+    const slices = incomeBySource(
+      [
+        entry({
+          note: "Marketplace",
+          amount_cents: 1000,
+          items: [item({ note: "sold shoes", amount_cents: 300 }), item({ note: "sold table", amount_cents: 200 })],
+        }),
+      ],
+      "all"
+    );
+
+    expect(slices.map((s) => [s.name, s.cents])).toEqual([["Marketplace", 1500]]);
+  });
+
+  it("windows sub-incomes by the parent's latest sub-income date", () => {
+    const parent = entry({
+      note: "Marketplace",
+      date: lastYear,
+      amount_cents: 1000,
+      items: [item({ date: thisMonth, amount_cents: 500 })],
+    });
+
+    // The latest sub-income is this year → the whole line is in the YTD window.
+    expect(incomeBySource([parent], "ytd").map((s) => [s.name, s.cents])).toEqual([["Marketplace", 1500]]);
   });
 });
 

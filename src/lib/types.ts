@@ -61,15 +61,28 @@ export interface BudgetCategory {
 
 export type BudgetEntryKind = "income" | "expense" | "other";
 
+/**
+ * A dated sub-income hanging off an income entry: "sold shoes", "$x". The line
+ * shows its own amount plus every item, and takes the latest item's date.
+ */
+export interface BudgetEntryItem {
+  id: string;
+  entry_id: string;
+  date: string; // YYYY-MM-DD
+  note: string; // free-text description
+  amount_cents: number; // positive; income
+}
+
 export interface BudgetEntry {
   id: string;
   kind: BudgetEntryKind;
   category_id: string | null; // NULL for income (free text)
   category_name: string | null;
   category_color: string | null;
-  date: string; // YYYY-MM-DD
-  amount_cents: number; // positive; sign is implied by kind
+  date: string; // YYYY-MM-DD — the entry's own date; income lines display the latest item date instead
+  amount_cents: number; // positive; sign is implied by kind — the entry's own "default" amount
   note: string;
+  items: BudgetEntryItem[]; // sub-incomes (empty for expense/other)
 }
 
 export interface BudgetCategoryRow {
@@ -88,6 +101,14 @@ export interface BudgetEntryRow {
   date: string;
   amount_cents: number;
   note: string;
+}
+
+export interface BudgetEntryItemRow {
+  id: string;
+  entry_id: string;
+  date: string;
+  note: string;
+  amount_cents: number;
 }
 
 /** One month in the budget overview strip (all values signed cents). */

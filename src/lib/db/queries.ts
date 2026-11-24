@@ -5,6 +5,8 @@ import type {
   BudgetCategory,
   BudgetCategoryRow,
   BudgetEntry,
+  BudgetEntryItem,
+  BudgetEntryItemRow,
   BudgetEntryRow,
   Movement,
   SavingsGoal,
@@ -16,6 +18,8 @@ import type {
   BudgetCategoryCreate,
   BudgetCategoryUpdate,
   BudgetEntryCreate,
+  BudgetEntryItemCreate,
+  BudgetEntryItemUpdate,
   BudgetEntryUpdate,
   MovementCreate,
   MovementUpdate,
@@ -346,13 +350,18 @@ export function archiveBudgetCategory(id: string): void {
 
 export function listBudgetEntries(opts: { limit?: number } = {}): BudgetEntry[] {
   const limit = Math.min(opts.limit ?? 1000, 1000);
-  const rows = getDb()
+  const db = getDb();
+  const rows = db
     .prepare(
       `SELECT e.id, e.kind, e.category_id, e.date, e.amount_cents, e.note,
               c.name AS category_name, c.color AS category_color
        FROM budget_entries e
        LEFT JOIN budget_categories c ON c.id = e.category_id
-       ORDER BY e.date DESC, e.rowid DESC
+       ORDER BY COALESCE(
+                  (SELECT MAX(i.date) FROM budget_entry_items i WHERE i.entry_id = e.id),
+                  e.date
+                ) DESC,
+                e.rowid DESC
        LIMIT ?`
     )
     .all(limit) as Array<{
@@ -366,7 +375,33 @@ export function listBudgetEntries(opts: { limit?: number } = {}): BudgetEntry[] 
     category_color: string | null;
   }>;
 
-  return rows.map((r) => ({ ...r, kind: r.kind as BudgetEntry["kind"] }));
+  if (rows.length === 0) return [];
+
+  // Attach each entry's sub-incomes in one query (the LIMIT above counts
+  // entries, not the joined item rows). Placeholders are literal "?" marks,
+  // never interpolated values.
+  const placeholders = rows.map(() => "?").join(", ");
+  const itemRows = db
+    .prepare(
+      `SELECT id, entry_id, date, note, amount_cents
+       FROM budget_entry_items
+       WHERE entry_id IN (${placeholders})
+       ORDER BY date, rowid`
+    )
+    .all(...rows.map((r) => r.id)) as BudgetEntryItemRow[];
+
+  const itemsByEntry = new Map<string, BudgetEntryItem[]>();
+  for (const item of itemRows) {
+    const list = itemsByEntry.get(item.entry_id);
+    if (list) list.push(item);
+    else itemsByEntry.set(item.entry_id, [item]);
+  }
+
+  return rows.map((r) => ({
+    ...r,
+    kind: r.kind as BudgetEntry["kind"],
+    items: itemsByEntry.get(r.id) ?? [],
+  }));
 }
 
 export function createBudgetEntry(data: BudgetEntryCreate): string {
@@ -390,6 +425,14 @@ export function updateBudgetEntry(id: string, data: BudgetEntryUpdate): void {
   if (!current) throw new InputError("Entry not found");
 
   const kind = data.kind ?? (current.kind as BudgetEntry["kind"]);
+  // An income line may carry sub-incomes; changing it into an expense/other
+  // entry would orphan them, so require the item list to be emptied first.
+  if (kind !== "income" && current.kind === "income") {
+    const items = db
+      .prepare(`SELECT COUNT(*) AS n FROM budget_entry_items WHERE entry_id = ?`)
+      .get(id) as { n: number };
+    if (items.n > 0) throw new InputError("Remove sub-incomes before changing this entry's type");
+  }
   const categoryId = validateEntryCategory(db, kind, data.category_id === undefined ? current.category_id : data.category_id ?? null);
 
   db.prepare(
@@ -425,6 +468,59 @@ function validateEntryCategory(
     .get(categoryId, kind);
   if (!category) throw new InputError("Category not found");
   return categoryId;
+}
+
+// ---------------------------------------------------------------------------
+// Sub-incomes (budget entry items)
+// ---------------------------------------------------------------------------
+
+function assertIncomeEntry(db: ReturnType<typeof getDb>, entryId: string): void {
+  const entry = db.prepare(`SELECT kind FROM budget_entries WHERE id = ?`).get(entryId) as
+    | { kind: string }
+    | undefined;
+  if (!entry) throw new InputError("Entry not found");
+  if (entry.kind !== "income") throw new InputError("Sub-incomes are only for income entries");
+}
+
+export function createBudgetEntryItem(entryId: string, data: BudgetEntryItemCreate): string {
+  const db = getDb();
+  assertIncomeEntry(db, entryId);
+
+  const id = crypto.randomUUID();
+  db.prepare(
+    `INSERT INTO budget_entry_items (id, entry_id, date, note, amount_cents, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(id, entryId, data.date, data.note ?? "", data.amount, new Date().toISOString());
+
+  return id;
+}
+
+export function updateBudgetEntryItem(
+  entryId: string,
+  itemId: string,
+  data: BudgetEntryItemUpdate
+): void {
+  const db = getDb();
+  const current = db
+    .prepare(`SELECT * FROM budget_entry_items WHERE id = ? AND entry_id = ?`)
+    .get(itemId, entryId) as BudgetEntryItemRow | undefined;
+  if (!current) throw new InputError("Sub-income not found");
+
+  db.prepare(
+    `UPDATE budget_entry_items SET date = ?, note = ?, amount_cents = ? WHERE id = ?`
+  ).run(
+    data.date ?? current.date,
+    data.note ?? current.note,
+    data.amount ?? current.amount_cents,
+    itemId
+  );
+}
+
+export function deleteBudgetEntryItem(entryId: string, itemId: string): void {
+  const result = getDb()
+    .prepare(`DELETE FROM budget_entry_items WHERE id = ? AND entry_id = ?`)
+    .run(itemId, entryId);
+  if (result.changes === 0) throw new InputError("Sub-income not found");
 }
 
 // ---------------------------------------------------------------------------

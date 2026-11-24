@@ -6,6 +6,7 @@ is that one file** — back it up by copying it, start over by deleting it.
 ```
 accounts ────< movements            (the ledger: balances over time)
 budget_categories ────< budget_entries   (the expenses page)
+budget_entries ────< budget_entry_items  (income sub-incomes: dated line items)
 savings_goals ────< savings_goal_accounts >──── accounts   (goals: weighted balances)
 ```
 
@@ -15,6 +16,13 @@ appear on the expenses page. Savings goals are a **third, purely derived**
 view: they store a target and a set of account weights, and their progress is
 recomputed from account balances on every read (nothing about progress is
 persisted).
+
+**Sub-incomes** are optional dated line items hanging off an *income* entry
+("sold shoes", "$x"). An income line's total is its own amount (its "default")
+plus every sub-income, and its date is the latest of its own date and its
+sub-incomes. Nothing about the total is stored — readers derive it. Every chart
+and aggregate goes through the same effective amount/date, so sub-incomes roll
+into their parent and never show up as a separate source or slice.
 
 ---
 
@@ -87,6 +95,27 @@ CREATE TABLE IF NOT EXISTS budget_entries (
 
 CREATE INDEX IF NOT EXISTS idx_budget_entries_date ON budget_entries(date);
 CREATE INDEX IF NOT EXISTS idx_budget_entries_category ON budget_entries(category_id);
+```
+
+Sub-incomes (same first-run migration): extra dated line items on an income
+entry. `amount_cents` is positive and always added to the parent's own amount;
+deleting the parent entry removes its sub-incomes via cascade. Only income
+entries may have them. A line's **displayed total** is its own amount plus
+every item, and its **displayed date** is the latest of its own date and its
+items — both derived at read time (`lib/expenses.ts`), never stored.
+
+```sql
+CREATE TABLE IF NOT EXISTS budget_entry_items (
+  id            TEXT PRIMARY KEY,
+  entry_id      TEXT NOT NULL REFERENCES budget_entries(id) ON DELETE CASCADE,
+  date          TEXT NOT NULL,           -- YYYY-MM-DD
+  note          TEXT NOT NULL DEFAULT '', -- free-text description
+  amount_cents  INTEGER NOT NULL,        -- always positive; income
+  created_at    TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_budget_entry_items_entry ON budget_entry_items(entry_id);
+CREATE INDEX IF NOT EXISTS idx_budget_entry_items_date ON budget_entry_items(date);
 ```
 
 On first run, empty `budget_categories` kinds are seeded with sensible
@@ -169,9 +198,9 @@ financial data. CI runs lint, typecheck, and tests on every PR
 | Monthly profit (delta) | `SUM(amount_cents)` filtered to the same `YYYY-MM` prefix |
 | Balance over time | End-of-month cumulative balance per account + Total series (`lib/series.ts`) |
 | Expenses-page savings | `SUM(amount_cents)` of **deposit** movements per month (only ledger → expenses link) |
-| Spent / income | `SUM(amount_cents)` of `budget_entries` per month, kind `expense`+`other` / kind `income` (`lib/expenses.ts`) |
+| Spent / income | `SUM(amount_cents)` of `budget_entries` per month, kind `expense`+`other` / kind `income`; an income line counts its default **plus** sub-incomes, in the month of its **latest** sub-income (`lib/expenses.ts`) |
 | Spending breakdown | `budget_entries` grouped by `category_id` for the selected month (`lib/expenses.ts`) |
-| Income breakdown | `budget_entries` of kind `income` grouped by trimmed description (note) for the selected month (`lib/expenses.ts`) |
+| Income breakdown | `budget_entries` of kind `income` grouped by trimmed description (note) for the selected month; sub-incomes roll into their parent, never their own slice (`lib/expenses.ts`) |
 | Goal saved | Σ `round(account balance × weight / 100)` over a goal's linked accounts (`lib/goals.ts`) |
 | Goal progress | saved ÷ `target_cents`, clamped to 0..1 (`lib/goals.ts`) |
 | Goal time-to-target | `remaining ÷ (weighted money in over the last 6 months ÷ 6)`; money in = deposits + positive adjustments, withdrawals ignored (`lib/goals.ts`) |

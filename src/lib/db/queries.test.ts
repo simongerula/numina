@@ -32,17 +32,23 @@ import {
   createAccount,
   createBudgetCategory,
   createBudgetEntry,
+  createBudgetEntryItem,
   createMovement,
   createSavingsGoal,
+  deleteBudgetEntry,
+  deleteBudgetEntryItem,
   deleteMovement,
   deleteSavingsGoal,
   listAccounts,
   listArchivedAccounts,
   listBudgetCategories,
+  listBudgetEntries,
   listCompletedSavingsGoals,
   listMonthlyInflowByAccount,
   listMovements,
   listSavingsGoals,
+  updateBudgetEntry,
+  updateBudgetEntryItem,
   updateMovement,
   updateSavingsGoal,
 } from "@/lib/db/queries";
@@ -58,7 +64,7 @@ function addMovement(input: Omit<MovementCreate, "date" | "note"> & { date?: str
 }
 
 function addBudgetEntry(
-  input: Omit<BudgetEntryCreate, "date" | "note"> & { date?: string }
+  input: Omit<BudgetEntryCreate, "date" | "note"> & { date?: string; note?: string }
 ): string {
   return createBudgetEntry({ date: "2026-11-01", note: "", ...input });
 }
@@ -163,6 +169,67 @@ describe("budget entries", () => {
     const others = listBudgetCategories("other");
     expect(expenses.every((c) => c.kind === "expense")).toBe(true);
     expect(others.every((c) => c.kind === "other")).toBe(true);
+  });
+});
+
+describe("sub-incomes (budget entry items)", () => {
+  it("attaches sub-incomes to an income entry and lists them", () => {
+    const entryId = addBudgetEntry({ kind: "income", amount: 1000, note: "Marketplace" });
+    createBudgetEntryItem(entryId, { date: "2026-11-03", note: "sold shoes", amount: 300 });
+    createBudgetEntryItem(entryId, { date: "2026-11-05", note: "sold table", amount: 200 });
+
+    const found = listBudgetEntries().find((e) => e.id === entryId);
+    expect(found?.items.map((i) => [i.note, i.amount_cents])).toEqual([
+      ["sold shoes", 300],
+      ["sold table", 200],
+    ]);
+  });
+
+  it("only allows sub-incomes on income entries", () => {
+    const categoryId = createBudgetCategory({ kind: "expense", name: "Food", color: "#f97316" });
+    const expenseId = addBudgetEntry({ kind: "expense", category_id: categoryId, amount: 100 });
+    expect(() =>
+      createBudgetEntryItem(expenseId, { date: "2026-11-03", note: "x", amount: 100 })
+    ).toThrow(InputError);
+
+    expect(() =>
+      createBudgetEntryItem("0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0", {
+        date: "2026-11-03",
+        note: "x",
+        amount: 100,
+      })
+    ).toThrow(InputError);
+  });
+
+  it("updates and deletes a sub-income, scoped to its parent", () => {
+    const entryId = addBudgetEntry({ kind: "income", amount: 1000, note: "Marketplace" });
+    const itemId = createBudgetEntryItem(entryId, { date: "2026-11-03", note: "sold shoes", amount: 300 });
+
+    updateBudgetEntryItem(entryId, itemId, { amount: 350, note: "sold boots" });
+    let found = listBudgetEntries().find((e) => e.id === entryId);
+    expect(found?.items[0]).toMatchObject({ note: "sold boots", amount_cents: 350 });
+
+    deleteBudgetEntryItem(entryId, itemId);
+    found = listBudgetEntries().find((e) => e.id === entryId);
+    expect(found?.items).toEqual([]);
+    expect(() => deleteBudgetEntryItem(entryId, itemId)).toThrow(InputError);
+  });
+
+  it("removes sub-incomes when the parent entry is deleted (cascade)", () => {
+    const entryId = addBudgetEntry({ kind: "income", amount: 1000, note: "Marketplace" });
+    createBudgetEntryItem(entryId, { date: "2026-11-03", note: "sold shoes", amount: 300 });
+    deleteBudgetEntry(entryId);
+    expect(listBudgetEntries().find((e) => e.id === entryId)).toBeUndefined();
+  });
+
+  it("refuses to turn an income line with sub-incomes into another kind", () => {
+    const entryId = addBudgetEntry({ kind: "income", amount: 1000, note: "Marketplace" });
+    createBudgetEntryItem(entryId, { date: "2026-11-03", note: "sold shoes", amount: 300 });
+    const categoryId = createBudgetCategory({ kind: "expense", name: "Food", color: "#f97316" });
+
+    expect(() => updateBudgetEntry(entryId, { kind: "expense", category_id: categoryId })).toThrow(
+      InputError
+    );
   });
 });
 

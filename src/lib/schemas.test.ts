@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   accountCreateSchema,
   budgetEntryCreateSchema,
+  budgetEntryItemCreateSchema,
   movementCreateSchema,
   savingsGoalCreateSchema,
 } from "./schemas";
@@ -141,6 +142,29 @@ describe("budgetEntryCreateSchema", () => {
         amount: 100,
       }).success
     ).toBe(true);
+  });
+});
+
+describe("budgetEntryItemCreateSchema", () => {
+  const base = { date: "2026-11-16", amount: 500, note: "sold shoes" };
+
+  it("accepts a dated sub-income", () => {
+    expect(budgetEntryItemCreateSchema.safeParse(base).success).toBe(true);
+  });
+
+  it("requires a positive amount", () => {
+    for (const amount of [0, -100]) {
+      expect(budgetEntryItemCreateSchema.safeParse({ ...base, amount }).success).toBe(false);
+    }
+  });
+
+  it("rejects invalid dates", () => {
+    expect(budgetEntryItemCreateSchema.safeParse({ ...base, date: "2026-02-31" }).success).toBe(false);
+  });
+
+  it("defaults a missing note to empty", () => {
+    const parsed = budgetEntryItemCreateSchema.safeParse({ date: "2026-11-16", amount: 500 });
+    expect(parsed.success && parsed.data.note).toBe("");
   });
 });
 

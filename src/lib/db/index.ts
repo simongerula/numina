@@ -67,6 +67,22 @@ export const SCHEMA_SQL = `
     CREATE INDEX IF NOT EXISTS idx_budget_entries_date ON budget_entries(date);
     CREATE INDEX IF NOT EXISTS idx_budget_entries_category ON budget_entries(category_id);
 
+    -- Sub-incomes: extra dated line items hanging off an income entry. The
+    -- entry's own amount stays its "default"; the displayed total is
+    -- default + every sub-income, and its date is the latest sub-income.
+    -- Deleting the parent entry removes its sub-incomes (cascade).
+    CREATE TABLE IF NOT EXISTS budget_entry_items (
+      id            TEXT PRIMARY KEY,
+      entry_id      TEXT NOT NULL REFERENCES budget_entries(id) ON DELETE CASCADE,
+      date          TEXT NOT NULL,           -- YYYY-MM-DD
+      note          TEXT NOT NULL DEFAULT '', -- free-text description
+      amount_cents  INTEGER NOT NULL,        -- always positive; income
+      created_at    TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_budget_entry_items_entry ON budget_entry_items(entry_id);
+    CREATE INDEX IF NOT EXISTS idx_budget_entry_items_date ON budget_entry_items(date);
+
     -- Savings goals: a target amount fed by one or more accounts, each at an
     -- independent weight (e.g. account A 100%, account B 20%). Progress is
     -- derived live from account balances. Completing a goal archives it (soft)
