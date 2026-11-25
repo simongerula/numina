@@ -1,0 +1,6 @@
+{
+  "identifier": "default",
+  "description": "Default capability for the Numina window. The shell uses no IPC commands; the webview only navigates to the loopback app.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

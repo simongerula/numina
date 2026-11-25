@@ -59,7 +59,7 @@ export const SCHEMA_SQL = `
       kind          TEXT NOT NULL CHECK (kind IN ('income', 'expense', 'other')),
       category_id   TEXT REFERENCES budget_categories(id), -- NULL for income (free text)
       date          TEXT NOT NULL,           -- YYYY-MM-DD
-      amount_cents  INTEGER NOT NULL,        -- always positive; sign comes from kind
+      amount_cents  INTEGER NOT NULL,        -- non-negative; sign comes from kind (income may be 0)
       note          TEXT NOT NULL DEFAULT '',
       created_at    TEXT NOT NULL
     );

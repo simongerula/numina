@@ -12,7 +12,7 @@ balances, your habits - and we'll show you a dashboard. Your most private
 number, total net worth, becomes a row in someone else's database.
 
 **Numina is the opposite trade.** One SQLite file on your own machine. One
-browser tab. Nothing ever leaves the computer - there is no code path in the
+browser tab (or an optional desktop window). Nothing ever leaves the computer - there is no code path in the
 app that *can* send it anywhere: the server is bound to loopback, the CSP
 blocks outside connections, and there is no analytics library to disable.
 
@@ -48,6 +48,9 @@ One-time requirements before the install command will work:
 - **Windows works too.** `numina install` drops a `numina.cmd` shim into
   pnpm's global bin dir (no Developer Mode or admin rights needed), and the
   app itself is platform-neutral. macOS and Linux get a symlink instead.
+- **Rust toolchain** *(optional — only for the desktop app)* — install from
+  <https://rustup.rs>. The web app never needs it; `numina install-app` will
+  tell you if it's missing.
 
 > **Heads up about the first install:** `pnpm numina install` *does* use
 > the network — that's the dependency download, and it's the only time.
@@ -88,6 +91,27 @@ Then the daily rhythm:
 The database is created automatically at `data/numina.db` on first run.
 To back up: copy the file. To start over: delete it.
 
+## Desktop app (optional)
+
+Prefer an icon in Applications or the Start Menu over a terminal? Numina ships
+an optional desktop shell that wraps the same local server in a native window
+(Tauri, using the operating system's webview — no Chromium is bundled). The
+window talks to `http://127.0.0.1:3000` exactly like a browser would, so the
+loopback binding and the request guard still apply, and the shell makes no
+network calls of its own. The ledger stays at `data/numina.db`.
+
+```bash
+numina install-app   # build + install the app (needs the Rust toolchain)
+numina app           # launch it later — or just double-click the icon
+```
+
+If Rust isn't installed, `numina install-app` offers to install it once —
+nothing is downloaded or installed without you typing `yes`.
+
+The app bakes in the absolute path of this checkout, because it launches the
+server from here. If you move or rename the repo, run `numina install-app`
+again. See [desktop/README.md](desktop/README.md) for details.
+
 ## Tech
 
 | Layer | Tech |
@@ -116,6 +140,9 @@ Design decisions that matter here:
 4. **Strict CSP** - no external scripts, styles, frames, or connections.
 5. **Zod validation** on every write before it touches the database.
 
+The optional desktop app changes none of this: it runs the same loopback
+server, and its shell makes no outbound calls of its own.
+
 ## Scripts
 
 | Command | Purpose |
@@ -126,6 +153,8 @@ Design decisions that matter here:
 | `numina stop` | Stop the running instance |
 | `numina build` | Run the production build (`next build`) |
 | `numina dev` | Force dev mode (same as `pnpm dev`) |
+| `numina install-app` | Build + install the optional desktop app (requires Rust) |
+| `numina app` | Launch the installed desktop app |
 | `pnpm dev` | Start dev server only, on http://127.0.0.1:3000 |
 | `pnpm build` | Production build |
 | `pnpm start` | Serve the production build (loopback only) |

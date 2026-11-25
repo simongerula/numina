@@ -33,11 +33,15 @@ export function formatDate(date: string): string {
   return `${String(d).padStart(2, "0")} ${names[m - 1]} ${y}`;
 }
 
-/** Typed money → integer cents, or null when not a usable money value (>2dp, 0, NaN).
- *  Tolerates the currency symbols users may paste from the UI. */
-export function centsFromInput(raw: string): number | null {
-  const n = Number(raw.replace(/[$€£¥₹,\s]/g, ""));
-  if (!Number.isFinite(n) || n === 0) return null;
+/** Typed money → integer cents, or null when not a usable money value (>2dp, NaN).
+ *  Tolerates the currency symbols users may paste from the UI. Zero is rejected
+ *  unless `allowZero` is set — most amounts must be positive, but an income
+ *  line's own "default" amount may be 0 when the line is all sub-incomes. */
+export function centsFromInput(raw: string, { allowZero = false } = {}): number | null {
+  const cleaned = raw.replace(/[$€£¥₹,\s]/g, "");
+  if (cleaned === "") return null; // blank, "$", or spaces is not zero
+  const n = Number(cleaned);
+  if (!Number.isFinite(n) || (n === 0 && !allowZero)) return null;
   const cents = Math.round(n * 100);
   return Math.abs(n * 100 - cents) > 1e-6 ? null : cents; // reject > 2dp
 }

@@ -28,7 +28,7 @@ import { useGoalsVisible } from "@/hooks/useGoalsVisible";
  * App settings, kept device-local in localStorage (no server table): the
  * display currency and whether the savings goals card is shown.
  */
-export function SettingsButton() {
+export function SettingsButton({ version }: { version: string }) {
   const { currency, setCurrency } = useCurrency();
   const { visible: goalsVisible, setVisible: setGoalsVisible } = useGoalsVisible();
 
@@ -84,6 +84,7 @@ export function SettingsButton() {
         </div>
 
         <DialogFooter>
+          <p className="mr-auto self-center text-xs text-muted-foreground">Version {version}</p>
           <DialogClose render={<Button variant="outline" />}>Done</DialogClose>
         </DialogFooter>
       </DialogContent>

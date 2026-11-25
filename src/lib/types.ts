@@ -80,7 +80,7 @@ export interface BudgetEntry {
   category_name: string | null;
   category_color: string | null;
   date: string; // YYYY-MM-DD — the entry's own date; income lines display the latest item date instead
-  amount_cents: number; // positive; sign is implied by kind — the entry's own "default" amount
+  amount_cents: number; // non-negative; income may be 0 (all sub-incomes) — the entry's own "default" amount
   note: string;
   items: BudgetEntryItem[]; // sub-incomes (empty for expense/other)
 }

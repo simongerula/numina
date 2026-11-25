@@ -103,6 +103,10 @@ export const budgetEntryCreateSchema = z
     "income takes no category; expense/other require one"
   );
 
+/**
+ * Unlike create, `amount` may be 0: an income line's own "default" can be 0
+ * when the line's money is entirely in sub-incomes.
+ */
 export const budgetEntryUpdateSchema = z.object({
   kind: budgetEntryKind.optional(),
   category_id: id.nullish(),

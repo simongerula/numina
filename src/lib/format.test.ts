@@ -53,4 +53,12 @@ describe("centsFromInput", () => {
     expect(centsFromInput("1.999")).toBeNull();
     expect(centsFromInput("NaN")).toBeNull();
   });
+
+  it("accepts zero only when allowZero is set, and never a blank", () => {
+    expect(centsFromInput("0", { allowZero: true })).toBe(0);
+    expect(centsFromInput("0.00", { allowZero: true })).toBe(0);
+    expect(centsFromInput("", { allowZero: true })).toBeNull();
+    expect(centsFromInput("$", { allowZero: true })).toBeNull();
+    expect(centsFromInput("abc", { allowZero: true })).toBeNull();
+  });
 });

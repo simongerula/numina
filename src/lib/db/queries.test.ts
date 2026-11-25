@@ -164,6 +164,12 @@ describe("budget entries", () => {
     ).toThrow(InputError);
   });
 
+  it("updates an income line's own amount to 0 (its total is all sub-incomes)", () => {
+    const entryId = addBudgetEntry({ kind: "income", amount: 1000, note: "Marketplace" });
+    updateBudgetEntry(entryId, { amount: 0 });
+    expect(listBudgetEntries().find((e) => e.id === entryId)?.amount_cents).toBe(0);
+  });
+
   it("keeps seeded and user categories separate per kind", () => {
     const expenses = listBudgetCategories("expense");
     const others = listBudgetCategories("other");

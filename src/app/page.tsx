@@ -4,6 +4,7 @@ import { Ledger } from "@/components/dashboard/ledger";
 import { MonthlyChangeRow } from "@/components/dashboard/monthly-change-row";
 import { SavingsGoals } from "@/components/dashboard/savings-goals";
 import { SettingsButton } from "@/components/dashboard/settings-button";
+import { APP_VERSION } from "@/lib/version";
 import {
   listAccounts,
   listArchivedAccounts,
@@ -51,7 +52,7 @@ export default function DashboardPage() {
           >
             Expenses
           </Link>
-          <SettingsButton />
+          <SettingsButton version={APP_VERSION} />
         </div>
       </header>
 
