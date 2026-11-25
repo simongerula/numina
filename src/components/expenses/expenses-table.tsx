@@ -592,7 +592,7 @@ export function ExpensesTable({
                           </td>
                         </tr>
                       ) : (
-                        <tr key={item.id} className="border-b border-l-2 border-l-emerald-500/50">
+                        <tr key={item.id} className="border-b border-l-2 border-l-emerald-500/50 bg-muted/40">
                           <EditableTd
                             onEdit={() => startSubEdit(item)}
                             className="py-2 pr-2 pl-10 text-sm text-muted-foreground"
@@ -623,7 +623,7 @@ export function ExpensesTable({
                     })}
 
                     {subItems.length === 0 && (
-                      <tr className="border-b border-l-2 border-l-emerald-500/50">
+                      <tr className="border-b border-l-2 border-l-emerald-500/50 bg-muted/40">
                         <td colSpan={4} className="py-3 pr-2 pl-10 text-xs text-muted-foreground">
                           No sub-incomes yet — add one above.
                         </td>
