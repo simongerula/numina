@@ -32,6 +32,18 @@ Numbers you can check:
 - **An expenses page** - months at a glance (saved from your ledger deposits, spent from budget entries), a scrollable money-flow card with pagination dots (where the money went, and where it came from), and spreadsheet-style income / expense / other tables with your own categories. Income lines take **sub-incomes** too - dated line items like "sold shoes" that add to the line, which shows its default plus every sub-income and dates itself to the most recent one.
 - **Savings goals** - set a target and fund it from one or more accounts, each at its own weight (100% of one, 20% of another). Cards show weighted progress and a rough time-to-goal from how much you've recently put in (deposits plus positive adjustments); edit a goal any time, complete it once it's fully funded (archived, and restorable), or delete it. Hide the card any time from the settings gear.
 
+## Screenshots
+
+**The dashboard** - balances over time, profits at a glance, this month's
+change, savings goals, and the ledger you edit in place.
+
+<img src="assets/dashboard.png" width="840" alt="Numina dashboard: a balance-over-time chart, a balances and profits table, a six-month balance-change row, savings-goal cards, and an editable ledger table." />
+
+**The expenses page** - months at a glance, the money-flow card (where the
+money went, and where it came from), and the income / expense / other tables.
+
+<img src="assets/expenses.png" width="840" alt="Numina expenses page: a month strip, a money-flow donut with its legend, an income/savings/spent summary, and income, expense and other tables." />
+
 ## Prerequisites
 
 One-time requirements before the install command will work:
