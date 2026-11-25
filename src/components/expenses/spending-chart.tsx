@@ -246,19 +246,22 @@ function DonutPanel({ slices, emptyText }: { slices: Slice[]; emptyText: string 
         </ResponsiveContainer>
       </div>
 
-      <ul className="flex-1 space-y-1.5 overflow-y-auto scrollbar-none">
-        {slices.map((s) => (
-          <li key={s.id} className="flex items-center gap-2 text-sm">
-            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: s.color }} />
-            <span className="truncate">{s.name}</span>
-            <span className="ml-auto shrink-0 tabular-nums">{formatMoney(s.cents, hidden, symbol)}</span>
-          </li>
-        ))}
-        <li className="flex items-center gap-2 border-t pt-1.5 text-sm font-semibold">
+      <div className="flex min-h-0 flex-1 flex-col">
+        {/* Ten rows (text-sm leading-5 plus the 1.5 gap) before it starts scrolling. */}
+        <ul className="max-h-64 space-y-1.5 overflow-y-auto scrollbar-none">
+          {slices.map((s) => (
+            <li key={s.id} className="flex items-center gap-2 text-sm">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: s.color }} />
+              <span className="truncate">{s.name}</span>
+              <span className="ml-auto shrink-0 tabular-nums">{formatMoney(s.cents, hidden, symbol)}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-1.5 flex items-center gap-2 border-t pt-1.5 text-sm font-semibold">
           <span className="ml-auto text-muted-foreground">Total</span>
           <span className="tabular-nums">{formatMoney(total, hidden, symbol)}</span>
-        </li>
-      </ul>
+        </div>
+      </div>
     </div>
   );
 }
