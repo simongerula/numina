@@ -37,6 +37,11 @@ telemetry. Financial data and privacy invariants take priority over convenience.
   in `package.json` scripts; never change host binding or disable the
   host/Origin guard (`lib/server/guard.ts`). All `/api/*` writes must remain
   behind the guard + Zod validation.
+- **The desktop shell (`desktop/`) is a wrapper, not a second app.** It must
+  keep launching the same loopback server and must not add network egress,
+  telemetry, auto-update, or a bundled browser engine (Tauri's system webview
+  only). The app and the `numina` CLI must resolve the same ledger at
+  `data/numina.db`.
 - **Money is signed integer cents** (`amount_cents`), end-to-end. No floats,
   no string amounts. Signs are applied at write time (deposit +, withdraw −,
   adjustment as given).

@@ -121,11 +121,11 @@ export function ExpensesTable({
     setDraft(null);
   };
 
-  const body = (d: Draft) => ({
+  const body = (d: Draft, allowZero = false) => ({
     kind,
     date: d.date,
     category_id: hasCategory ? d.category_id : null,
-    amount: centsFromInput(d.amount),
+    amount: centsFromInput(d.amount, { allowZero }),
     note: d.note.trim(),
   });
 
@@ -142,8 +142,10 @@ export function ExpensesTable({
   const commitEdit = async () => {
     if (!draft || !editingId || busy) return;
     if (hasCategory && !draft.category_id) return;
-    if (body(draft).amount === null) return;
-    const ok = await commitMutation({ method: "PATCH", body: JSON.stringify(body(draft)) }, editingId);
+    // An income line's own amount may be 0 — its total can be all sub-incomes.
+    const payload = body(draft, kind === "income");
+    if (payload.amount === null) return;
+    const ok = await commitMutation({ method: "PATCH", body: JSON.stringify(payload) }, editingId);
     if (ok) {
       cancelEdit();
       router.refresh();

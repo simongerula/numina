@@ -1,0 +1,23 @@
+[package]
+name = "numina"
+version = "0.1.0"
+description = "Numina desktop shell — a window around the local-first Numina app"
+edition = "2021"
+rust-version = "1.77"
+license = "MIT"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+
+# Process-group signalling on Unix (SIGTERM/SIGKILL to the whole server tree).
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

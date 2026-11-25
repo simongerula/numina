@@ -42,6 +42,9 @@ pnpm test     # Vitest suite (must be green)
 - **Loopback binding and the guard are non-negotiable.** Keep
   `-H 127.0.0.1` in the scripts; every `/api/*` write stays behind
   `lib/server/guard.ts` + Zod validation.
+- **The desktop shell (`desktop/`) is optional and stays a thin wrapper.** It
+  launches the same loopback server and must not add network paths, telemetry,
+  auto-updates, or a bundled browser engine.
 - **Money is signed integer cents** (`amount_cents`) end-to-end. No floats,
   no string amounts. Signs are applied at write time.
 - **All SQL lives in `src/lib/db/queries.ts`**, prepared and parameterized.
@@ -68,6 +71,10 @@ Windows is supported for running the app. `numina install` works too — it
 drops a `numina.cmd` shim into pnpm's global bin dir (no Developer Mode or
 admin rights needed). If better-sqlite3 has no prebuilt binary for your Node
 version, it compiles from source, which requires Visual Studio Build Tools.
+
+The optional desktop app builds on Windows as well: `numina install-app`
+produces an NSIS installer. It needs the Rust toolchain, and Microsoft Edge
+WebView2 (which ships with current Windows).
 
 ## Reporting issues
 

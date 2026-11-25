@@ -11,6 +11,8 @@
 //   numina open     just open the browser tab (errors out if not running)
 //   numina stop     stop the running instance (PID lives in .numina.pid)
 //   numina build    run the production build (`next build`)
+//   numina install-app  build + install the optional desktop app (Tauri)
+//   numina app      launch the installed desktop app
 //   numina help     this
 //
 // Always anchors to this project's root, so it works from any directory.
@@ -18,9 +20,15 @@
 
 import { spawn, spawnSync } from "node:child_process";
 import { platform } from "node:os";
+import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
 import {
+  accessSync,
+  constants,
+  cpSync,
+  existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   realpathSync,
   rmSync,
@@ -52,6 +60,8 @@ commands:
   open       open the browser tab without starting the server
   stop       stop the running instance
   build      run the production build
+  install-app  build + install the optional desktop app (needs Rust)
+  app        launch the installed desktop app
   help       show this message
 
 The server always binds to ${host} and never leaves this machine.
@@ -303,6 +313,260 @@ function runStop() {
   }, 500);
 }
 
+// The optional Tauri desktop app lives in ./desktop. These helpers build and
+// install it, and launch it once installed. The app is strictly a shell around
+// the same loopback server — see desktop/README.md.
+
+function desktopDir() {
+  return fileURLToPath(new URL("../desktop", "file://" + scriptPath));
+}
+
+// Prefer a locally installed Tauri CLI; otherwise fetch it on demand. Returns
+// { cmd, prefix } to be spawned with the subcommand appended.
+function tauriCommand() {
+  const local = path.join(
+    projectRoot,
+    "node_modules",
+    ".bin",
+    platform() === "win32" ? "tauri.cmd" : "tauri"
+  );
+  if (existsSync(local)) return { cmd: local, prefix: [] };
+  return { cmd: "pnpm", prefix: ["dlx", "@tauri-apps/cli@^2"] };
+}
+
+// Where to copy Numina.app: /Applications when writable, else ~/Applications.
+function macAppDest() {
+  try {
+    accessSync("/Applications", constants.W_OK);
+    return "/Applications/Numina.app";
+  } catch {
+    return path.join(process.env.HOME, "Applications", "Numina.app");
+  }
+}
+
+// Locates a usable `cargo`: whatever is on PATH, else rustup's default install
+// location (which may exist even before PATH picks it up).
+function findCargo() {
+  const isWindows = platform() === "win32";
+  const binName = isWindows ? "cargo.exe" : "cargo";
+  const home = process.env.HOME ?? process.env.USERPROFILE;
+  const candidates = [binName];
+  if (home) candidates.push(path.join(home, ".cargo", "bin", binName));
+
+  for (const candidate of candidates) {
+    const probe = spawnSync(candidate, ["--version"], {
+      encoding: "utf8",
+      shell: isWindows && candidate === binName, // resolve cargo.exe via the shell
+    });
+    if (probe.status === 0) {
+      return {
+        version: probe.stdout.trim(),
+        // Only needed when cargo was found off-PATH: the Tauri build must be
+        // able to find it too (see the PATH injection in runInstallApp).
+        dir: path.isAbsolute(candidate) ? path.dirname(candidate) : null,
+      };
+    }
+  }
+  return null;
+}
+
+const RUST_MANUAL =
+  "Rust is not installed. Install it from https://rustup.rs, then run\n" +
+  "`numina install-app` again. (Only the desktop app needs Rust — the web\n" +
+  "app does not.)";
+
+// Asks once whether to install Rust, then runs the official rustup installer.
+// Returns true only if an install ran successfully. Non-interactive runs
+// (pipes, CI) never prompt — they just print the manual instructions.
+async function offerRustInstall() {
+  if (!process.stdin.isTTY) {
+    console.error(RUST_MANUAL);
+    return false;
+  }
+
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  let answer = "";
+  try {
+    answer = (
+      await rl.question("     Rust is missing — install it now? [y/N] ")
+    )
+      .trim()
+      .toLowerCase();
+  } catch {
+    // Ctrl+D / EOF at the prompt — treat as "no".
+    answer = "";
+  }
+  rl.close();
+
+  if (answer !== "y" && answer !== "yes") {
+    console.error(RUST_MANUAL);
+    return false;
+  }
+
+  console.log("     Installing Rust via rustup (this downloads the toolchain)...");
+  if (installRust()) return true;
+
+  console.error(`     Rust installation failed.\n${RUST_MANUAL}`);
+  return false;
+}
+
+function installRust() {
+  if (platform() === "win32") {
+    // Windows has no curl|sh one-liner; download rustup-init and run it.
+    const script = [
+      "$ProgressPreference='SilentlyContinue';",
+      "Invoke-WebRequest -Uri 'https://win.rustup.rs/x86_64' -OutFile \"$env:TEMP\\rustup-init.exe\";",
+      "& \"$env:TEMP\\rustup-init.exe\" -y --default-toolchain stable",
+    ].join(" ");
+    return spawnSync("powershell", ["-NoProfile", "-Command", script], { stdio: "inherit" }).status === 0;
+  }
+  // macOS / Linux: rustup's documented one-liner, non-interactive (-y).
+  const install = spawnSync(
+    "sh",
+    [
+      "-c",
+      "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable",
+    ],
+    { stdio: "inherit" }
+  );
+  return install.status === 0;
+}
+
+async function runInstallApp() {
+  const desktop = desktopDir();
+
+  // 1/4 — the app serves the production build (`next start`), so it must exist.
+  const buildIdPath = fileURLToPath(new URL("../.next/BUILD_ID", "file://" + scriptPath));
+  let hasBuild = true;
+  try {
+    readFileSync(buildIdPath);
+  } catch {
+    hasBuild = false;
+  }
+  if (hasBuild) {
+    console.log("1/4  Using the existing production build (run `numina build` to refresh it).");
+  } else {
+    console.log("1/4  Building the production bundle (none found)...");
+    const build = spawnSync(process.execPath, [nextBin, "build"], {
+      stdio: "inherit",
+      cwd: projectRoot,
+    });
+    if (build.status !== 0) {
+      console.error("Build failed.");
+      process.exit(build.status ?? 1);
+    }
+  }
+
+  // 2/4 — the Rust toolchain; only the desktop app needs it. If it's missing,
+  // offer to install it once (opt-in — nothing is installed without a "yes").
+  console.log("2/4  Checking the Rust toolchain...");
+  let cargo = findCargo();
+  if (!cargo) {
+    if (!(await offerRustInstall())) process.exit(1);
+    cargo = findCargo();
+    if (!cargo) {
+      console.error(
+        "Rust was installed but `cargo` still isn't found. Open a new terminal,\n" +
+        "then run `numina install-app` again."
+      );
+      process.exit(1);
+    }
+  }
+  console.log(`     ${cargo.version}`);
+
+  // 3/4 — generate icons, then build the Tauri bundle.
+  const tauri = tauriCommand();
+  const runTauri = (args, env) =>
+    spawnSync(tauri.cmd, [...tauri.prefix, ...args], {
+      stdio: "inherit",
+      cwd: desktop,
+      shell: platform() === "win32",
+      env: env ?? process.env,
+    });
+
+  console.log("3/4  Generating the app icon...");
+  const icon = runTauri(["icon", "app-icon.png"]);
+  if (icon.status !== 0) {
+    console.error("Icon generation failed.");
+    process.exit(icon.status ?? 1);
+  }
+
+  console.log("     Building the desktop bundle (first run compiles Rust; this takes a while)...");
+  const buildEnv = {
+    ...process.env,
+    // Baked into the binary so the app knows where the server and Node live.
+    NUMINA_PROJECT_ROOT: projectRoot,
+    NUMINA_NODE_BIN: process.execPath,
+  };
+  // A just-installed rustup toolchain isn't on this process's PATH yet, but the
+  // Tauri build spawns cargo itself — so make sure it can find one.
+  if (cargo.dir) {
+    const separator = platform() === "win32" ? ";" : ":";
+    const pathKey = Object.keys(buildEnv).find((key) => key.toLowerCase() === "path") ?? "PATH";
+    buildEnv[pathKey] = `${cargo.dir}${separator}${buildEnv[pathKey] ?? ""}`;
+  }
+  const built = runTauri(["build"], buildEnv);
+  if (built.status !== 0) {
+    console.error("Desktop build failed.");
+    process.exit(built.status ?? 1);
+  }
+
+  // 4/4 — put the app where the user can launch it.
+  console.log("4/4  Installing...");
+  if (platform() === "darwin") {
+    const appPath = path.join(
+      desktop,
+      "src-tauri",
+      "target",
+      "release",
+      "bundle",
+      "macos",
+      "Numina.app"
+    );
+    if (!existsSync(appPath)) {
+      console.error(`Expected bundle not found at ${appPath}.`);
+      process.exit(1);
+    }
+    const dest = macAppDest();
+    mkdirSync(path.dirname(dest), { recursive: true });
+    rmSync(dest, { recursive: true, force: true });
+    cpSync(appPath, dest, { recursive: true, verbatimSymlinks: true });
+    console.log(`     Copied Numina.app to ${dest}.`);
+    console.log("     Launch it from Applications or Spotlight — no terminal needed.");
+  } else if (platform() === "win32") {
+    const nsisDir = path.join(desktop, "src-tauri", "target", "release", "bundle", "nsis");
+    const installer = existsSync(nsisDir)
+      ? readdirSync(nsisDir).find((name) => name.toLowerCase().endsWith(".exe"))
+      : undefined;
+    if (!installer) {
+      console.error(`Expected an NSIS installer in ${nsisDir}.`);
+      process.exit(1);
+    }
+    console.log(`     Installer ready: ${path.join(nsisDir, installer)}`);
+    console.log("     Run it to install Numina, then launch it from the Start Menu.");
+  } else {
+    console.log("     Desktop bundles are set up for macOS and Windows — see desktop/README.md.");
+  }
+
+  console.log("");
+  console.log("Keep this repo where it is: the app launches the server from this checkout.");
+}
+
+function runOpenApp() {
+  if (platform() === "darwin") {
+    const result = spawnSync("open", ["-a", "Numina"], { stdio: "inherit" });
+    if (result.status !== 0) {
+      console.error("Could not launch Numina. Install it first with `numina install-app`.");
+      process.exit(1);
+    }
+  } else if (platform() === "win32") {
+    spawn("cmd", ["/c", "start", "", "Numina"], { stdio: "ignore", detached: true }).unref();
+  } else {
+    console.error("`numina app` is set up for macOS and Windows only.");
+    process.exit(1);
+  }
+}
+
 switch (command) {
   case "start":
     await runStart("start");
@@ -336,6 +600,12 @@ switch (command) {
     console.log(`Build complete. Start with \`numina\` — it will serve the prod build at ${url}.`);
     break;
   }
+  case "install-app":
+    await runInstallApp();
+    break;
+  case "app":
+    runOpenApp();
+    break;
   case "help":
   case "--help":
   case "-h":

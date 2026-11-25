@@ -88,7 +88,7 @@ CREATE TABLE IF NOT EXISTS budget_entries (
   kind          TEXT NOT NULL CHECK (kind IN ('income', 'expense', 'other')),
   category_id   TEXT REFERENCES budget_categories(id), -- NULL for income
   date          TEXT NOT NULL,           -- YYYY-MM-DD
-  amount_cents  INTEGER NOT NULL,        -- always positive; sign implied by kind
+  amount_cents  INTEGER NOT NULL,        -- non-negative; sign implied by kind (income may be 0)
   note          TEXT NOT NULL DEFAULT '',
   created_at    TEXT NOT NULL
 );

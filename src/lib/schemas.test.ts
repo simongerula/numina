@@ -3,6 +3,7 @@ import {
   accountCreateSchema,
   budgetEntryCreateSchema,
   budgetEntryItemCreateSchema,
+  budgetEntryUpdateSchema,
   movementCreateSchema,
   savingsGoalCreateSchema,
 } from "./schemas";
@@ -142,6 +143,16 @@ describe("budgetEntryCreateSchema", () => {
         amount: 100,
       }).success
     ).toBe(true);
+  });
+});
+
+describe("budgetEntryUpdateSchema", () => {
+  it("allows an income line's own amount to be updated to 0", () => {
+    expect(budgetEntryUpdateSchema.safeParse({ amount: 0 }).success).toBe(true);
+  });
+
+  it("still rejects a fractional amount", () => {
+    expect(budgetEntryUpdateSchema.safeParse({ amount: 1.5 }).success).toBe(false);
   });
 });
 

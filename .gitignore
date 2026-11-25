@@ -46,6 +46,11 @@ next-env.d.ts
 # numina launcher pid file
 /.numina.pid
 
+# desktop app (Tauri) — generated build artifacts
+/desktop/src-tauri/target/
+/desktop/src-tauri/gen/
+/desktop/src-tauri/icons/
+
 # Agents files
 PLAN.md
 releaseNotes.md
